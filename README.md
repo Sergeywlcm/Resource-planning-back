@@ -71,10 +71,10 @@ Frontend starts on `http://localhost:5173` and calls backend using `VITE_API_BAS
 
 ## Database schema strategy
 
-- `Resource` model: baseline catalog of assignable people (`name`, `capacity_hours`, `is_active`).
+- `Resource` model: baseline catalog of assignable people with role and capacity.
 - `Project` model: tracks project identity, lifecycle status, and planned dates.
 - `Allocation` model: joins `Resource` and `Project` with date-bounded allocation percentage.
-- All models use Mongoose timestamps (`Resource`: `created_at`/`updated_at`; others: `createdAt`/`updatedAt`).
+- All three models use Mongoose timestamps (`createdAt`, `updatedAt`).
 - The server runs schema synchronization (`createCollection` + `syncIndexes`) during startup.
 - The same synchronization can be run manually with `npm run db:schema:sync` for local initialization or CI checks.
 - Startup and schema sync fail with clear error messages when MongoDB is not reachable or configuration is missing.
