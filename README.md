@@ -42,6 +42,8 @@ Available endpoints:
 
 - `GET /health` → service + database status (returns `200` when DB is connected, `503` otherwise)
 - `GET /api/ping` → `{ "message": "Backend is reachable" }`
+- `POST /api/resources` → create resource (`name` required, `capacity_hours` default `8`, `is_active` default `true`)
+- `PATCH /api/resources/:id` → update an existing resource
 
 ### 2) Frontend (React + Vite)
 
