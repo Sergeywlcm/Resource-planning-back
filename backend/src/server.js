@@ -1,9 +1,11 @@
 import cors from 'cors';
 import dotenv from 'dotenv';
 import express from 'express';
+import mongoose from 'mongoose';
 
 import { connectToDatabase, getDatabaseHealth } from './config/database.js';
 import { syncSchema } from './db/syncSchema.js';
+import { Resource } from './models/resource.model.js';
 
 dotenv.config();
 
@@ -26,6 +28,61 @@ app.get('/health', (_req, res) => {
 
 app.get('/api/ping', (_req, res) => {
   res.status(200).json({ message: 'Backend is reachable' });
+});
+
+app.post('/api/resources', async (req, res) => {
+  try {
+    const resource = await Resource.create({
+      name: req.body?.name,
+      capacity_hours: req.body?.capacity_hours,
+      is_active: req.body?.is_active
+    });
+
+    res.status(201).json(resource.toJSON());
+  } catch (error) {
+    if (error instanceof mongoose.Error.ValidationError) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    if (error?.code === 11000) {
+      return res.status(409).json({ error: 'Resource name must be unique.' });
+    }
+
+    return res.status(500).json({ error: 'Failed to create resource.' });
+  }
+});
+
+app.patch('/api/resources/:id', async (req, res) => {
+  try {
+    const updatedResource = await Resource.findByIdAndUpdate(
+      req.params.id,
+      {
+        name: req.body?.name,
+        capacity_hours: req.body?.capacity_hours,
+        is_active: req.body?.is_active
+      },
+      {
+        new: true,
+        runValidators: true
+      }
+    );
+
+    if (!updatedResource) {
+      return res.status(404).json({ error: 'Resource not found.' });
+    }
+
+    return res.status(200).json(updatedResource.toJSON());
+  } catch (error) {
+    if (error instanceof mongoose.Error.ValidationError) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    if (error?.code === 11000) {
+      return res.status(409).json({ error: 'Resource name must be unique.' });
+    }
+
+    return res.status(500).json({ error: 'Failed to update resource.' });
+  }
 });
 
 async function bootstrap() {
