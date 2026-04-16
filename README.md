@@ -11,6 +11,8 @@ This repository contains a minimal full-stack foundation for the Resource Manage
 │   └── src/
 │       ├── config/database.js
 │       ├── db/syncSchema.js
+│       ├── models/allocation.model.js
+│       ├── models/project.model.js
 │       ├── models/resource.model.js
 │       ├── scripts/applySchema.js
 │       └── server.js
@@ -67,7 +69,10 @@ Frontend starts on `http://localhost:5173` and calls backend using `VITE_API_BAS
 
 ## Database schema strategy
 
-- `Resource` is the initial baseline schema and lives in `backend/src/models/resource.model.js`.
+- `Resource` model: baseline catalog of assignable people with role and capacity.
+- `Project` model: tracks project identity, lifecycle status, and planned dates.
+- `Allocation` model: joins `Resource` and `Project` with date-bounded allocation percentage.
+- All three models use Mongoose `timestamps` (`createdAt`, `updatedAt`).
 - The server runs schema synchronization (`createCollection` + `syncIndexes`) during startup.
 - The same synchronization can be run manually with `npm run db:schema:sync` for local initialization or CI checks.
 - Startup and schema sync fail with clear error messages when MongoDB is not reachable or configuration is missing.
