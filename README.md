@@ -42,10 +42,11 @@ Available endpoints:
 
 - `GET /health` → service + database status (returns `200` when DB is connected, `503` otherwise)
 - `GET /api/ping` → `{ "message": "Backend is reachable" }`
-- `GET /resources` → list all resources
-- `GET /resources/:id` → fetch a single resource by id
-- `POST /resources` → create resource (`name` required, `capacity_hours` default `8`, `is_active` default `true`)
-- `PUT /resources/:id` → replace/update an existing resource
+- `GET /resources` and `GET /api/resources` → list all resources
+- `GET /resources/:id` and `GET /api/resources/:id` → fetch a single resource by id
+- `POST /resources` and `POST /api/resources` → create resource (`name` required, `capacity_hours` default `8`, `is_active` default `true`)
+- `PUT /resources/:id` and `PUT /api/resources/:id` → replace/update an existing resource
+- `PATCH /api/resources/:id` → compatibility alias for update
 
 ### 2) Frontend (React + Vite)
 

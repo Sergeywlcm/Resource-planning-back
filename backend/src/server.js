@@ -47,16 +47,16 @@ function normalizeResourcePayload(body) {
   };
 }
 
-app.get('/resources', async (_req, res) => {
+async function listResources(_req, res) {
   try {
     const resources = await Resource.find().sort({ created_at: -1 });
     return res.status(200).json({ data: resources.map((resource) => resource.toJSON()) });
   } catch {
     return sendError(res, 500, 'Failed to list resources.', 'RESOURCE_LIST_FAILED');
   }
-});
+}
 
-app.get('/resources/:id', async (req, res) => {
+async function getResourceById(req, res) {
   try {
     const resource = await Resource.findById(req.params.id);
 
@@ -72,9 +72,9 @@ app.get('/resources/:id', async (req, res) => {
 
     return sendError(res, 500, 'Failed to fetch resource.', 'RESOURCE_FETCH_FAILED');
   }
-});
+}
 
-app.post('/resources', async (req, res) => {
+async function createResource(req, res) {
   try {
     const resource = await Resource.create(normalizeResourcePayload(req.body));
     return res.status(201).json({ data: resource.toJSON() });
@@ -89,9 +89,9 @@ app.post('/resources', async (req, res) => {
 
     return sendError(res, 500, 'Failed to create resource.', 'RESOURCE_CREATE_FAILED');
   }
-});
+}
 
-app.put('/resources/:id', async (req, res) => {
+async function replaceResource(req, res) {
   try {
     const resource = await Resource.findById(req.params.id);
 
@@ -122,7 +122,17 @@ app.put('/resources/:id', async (req, res) => {
 
     return sendError(res, 500, 'Failed to update resource.', 'RESOURCE_UPDATE_FAILED');
   }
-});
+}
+
+app.get('/resources', listResources);
+app.get('/api/resources', listResources);
+app.get('/resources/:id', getResourceById);
+app.get('/api/resources/:id', getResourceById);
+app.post('/resources', createResource);
+app.post('/api/resources', createResource);
+app.put('/resources/:id', replaceResource);
+app.put('/api/resources/:id', replaceResource);
+app.patch('/api/resources/:id', replaceResource);
 
 async function bootstrap() {
   try {
