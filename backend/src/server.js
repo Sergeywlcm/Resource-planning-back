@@ -16,6 +16,44 @@ const corsOrigin = process.env.CORS_ORIGIN ?? 'http://localhost:5173';
 app.use(cors({ origin: corsOrigin }));
 app.use(express.json());
 
+function sendSuccess(res, status, data) {
+  return res.status(status).json({ data, error: null });
+}
+
+function sendError(res, status, message, details = null) {
+  return res.status(status).json({
+    data: null,
+    error: {
+      message,
+      details
+    }
+  });
+}
+
+function parseResourcePayload(body) {
+  return {
+    name: body?.name,
+    capacity_hours: body?.capacity_hours,
+    is_active: body?.is_active
+  };
+}
+
+function handleResourceWriteError(error, res, actionLabel) {
+  if (error instanceof mongoose.Error.ValidationError) {
+    return sendError(res, 400, 'Validation failed.', error.message);
+  }
+
+  if (error instanceof mongoose.Error.CastError) {
+    return sendError(res, 400, 'Invalid resource id.', error.message);
+  }
+
+  if (error?.code === 11000) {
+    return sendError(res, 409, 'Resource name must be unique.');
+  }
+
+  return sendError(res, 500, `Failed to ${actionLabel} resource.`);
+}
+
 app.get('/health', (_req, res) => {
   const database = getDatabaseHealth();
   const statusCode = database.state === 'connected' ? 200 : 503;
@@ -30,37 +68,47 @@ app.get('/api/ping', (_req, res) => {
   res.status(200).json({ message: 'Backend is reachable' });
 });
 
-app.post('/api/resources', async (req, res) => {
+app.get('/resources', async (_req, res) => {
   try {
-    const resource = await Resource.create({
-      name: req.body?.name,
-      capacity_hours: req.body?.capacity_hours,
-      is_active: req.body?.is_active
-    });
-
-    res.status(201).json(resource.toJSON());
-  } catch (error) {
-    if (error instanceof mongoose.Error.ValidationError) {
-      return res.status(400).json({ error: error.message });
-    }
-
-    if (error?.code === 11000) {
-      return res.status(409).json({ error: 'Resource name must be unique.' });
-    }
-
-    return res.status(500).json({ error: 'Failed to create resource.' });
+    const resources = await Resource.find().sort({ created_at: 1 });
+    return sendSuccess(res, 200, resources.map((resource) => resource.toJSON()));
+  } catch (_error) {
+    return sendError(res, 500, 'Failed to fetch resources.');
   }
 });
 
-app.patch('/api/resources/:id', async (req, res) => {
+app.get('/resources/:id', async (req, res) => {
+  try {
+    const resource = await Resource.findById(req.params.id);
+
+    if (!resource) {
+      return sendError(res, 404, 'Resource not found.');
+    }
+
+    return sendSuccess(res, 200, resource.toJSON());
+  } catch (error) {
+    if (error instanceof mongoose.Error.CastError) {
+      return sendError(res, 400, 'Invalid resource id.', error.message);
+    }
+
+    return sendError(res, 500, 'Failed to fetch resource.');
+  }
+});
+
+app.post('/resources', async (req, res) => {
+  try {
+    const resource = await Resource.create(parseResourcePayload(req.body));
+    return sendSuccess(res, 201, resource.toJSON());
+  } catch (error) {
+    return handleResourceWriteError(error, res, 'create');
+  }
+});
+
+app.put('/resources/:id', async (req, res) => {
   try {
     const updatedResource = await Resource.findByIdAndUpdate(
       req.params.id,
-      {
-        name: req.body?.name,
-        capacity_hours: req.body?.capacity_hours,
-        is_active: req.body?.is_active
-      },
+      parseResourcePayload(req.body),
       {
         new: true,
         runValidators: true
@@ -68,20 +116,42 @@ app.patch('/api/resources/:id', async (req, res) => {
     );
 
     if (!updatedResource) {
-      return res.status(404).json({ error: 'Resource not found.' });
+      return sendError(res, 404, 'Resource not found.');
     }
 
-    return res.status(200).json(updatedResource.toJSON());
+    return sendSuccess(res, 200, updatedResource.toJSON());
   } catch (error) {
-    if (error instanceof mongoose.Error.ValidationError) {
-      return res.status(400).json({ error: error.message });
+    return handleResourceWriteError(error, res, 'update');
+  }
+});
+
+app.patch('/api/resources/:id', async (req, res) => {
+  try {
+    const updatedResource = await Resource.findByIdAndUpdate(
+      req.params.id,
+      parseResourcePayload(req.body),
+      {
+        new: true,
+        runValidators: true
+      }
+    );
+
+    if (!updatedResource) {
+      return sendError(res, 404, 'Resource not found.');
     }
 
-    if (error?.code === 11000) {
-      return res.status(409).json({ error: 'Resource name must be unique.' });
-    }
+    return sendSuccess(res, 200, updatedResource.toJSON());
+  } catch (error) {
+    return handleResourceWriteError(error, res, 'update');
+  }
+});
 
-    return res.status(500).json({ error: 'Failed to update resource.' });
+app.post('/api/resources', async (req, res) => {
+  try {
+    const resource = await Resource.create(parseResourcePayload(req.body));
+    return sendSuccess(res, 201, resource.toJSON());
+  } catch (error) {
+    return handleResourceWriteError(error, res, 'create');
   }
 });
 
