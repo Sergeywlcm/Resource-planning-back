@@ -42,8 +42,11 @@ Available endpoints:
 
 - `GET /health` → service + database status (returns `200` when DB is connected, `503` otherwise)
 - `GET /api/ping` → `{ "message": "Backend is reachable" }`
-- `POST /api/resources` → create resource (`name` required, `capacity_hours` default `8`, `is_active` default `true`)
-- `PATCH /api/resources/:id` → update an existing resource
+- `GET /resources` and `GET /api/resources` → list all resources
+- `GET /resources/:id` and `GET /api/resources/:id` → fetch a single resource by id
+- `POST /resources` and `POST /api/resources` → create resource (`name` required, `capacity_hours` default `8`, `is_active` default `true`)
+- `PUT /resources/:id` and `PUT /api/resources/:id` → replace/update an existing resource
+- `PATCH /api/resources/:id` → update an existing resource (partial update alias)
 
 ### 2) Frontend (React + Vite)
 
@@ -71,10 +74,10 @@ Frontend starts on `http://localhost:5173` and calls backend using `VITE_API_BAS
 
 ## Database schema strategy
 
-- `Resource` model: baseline catalog of assignable people with role and capacity.
+- `Resource` model: baseline catalog of assignable people (`name`, `capacity_hours`, `is_active`).
 - `Project` model: tracks project identity, lifecycle status, and planned dates.
 - `Allocation` model: joins `Resource` and `Project` with date-bounded allocation percentage.
-- All three models use Mongoose `timestamps` (`createdAt`, `updatedAt`).
+- All models use Mongoose `timestamps` (`Resource`: `created_at`/`updated_at`, others: `createdAt`/`updatedAt`).
 - The server runs schema synchronization (`createCollection` + `syncIndexes`) during startup.
 - The same synchronization can be run manually with `npm run db:schema:sync` for local initialization or CI checks.
 - Startup and schema sync fail with clear error messages when MongoDB is not reachable or configuration is missing.
