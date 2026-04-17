@@ -47,34 +47,7 @@ function normalizeResourcePayload(body) {
   };
 }
 
-async function listResources(_req, res) {
-  try {
-    const resources = await Resource.find().sort({ created_at: -1 });
-    return res.status(200).json({ data: resources.map((resource) => resource.toJSON()) });
-  } catch {
-    return sendError(res, 500, 'Failed to list resources.', 'RESOURCE_LIST_FAILED');
-  }
-}
-
-async function getResourceById(req, res) {
-  try {
-    const resource = await Resource.findById(req.params.id);
-
-    if (!resource) {
-      return sendError(res, 404, 'Resource not found.', 'RESOURCE_NOT_FOUND');
-    }
-
-    return res.status(200).json({ data: resource.toJSON() });
-  } catch (error) {
-    if (error instanceof mongoose.Error.CastError) {
-      return sendError(res, 400, 'Invalid resource id.', 'RESOURCE_INVALID_ID');
-    }
-
-    return sendError(res, 500, 'Failed to fetch resource.', 'RESOURCE_FETCH_FAILED');
-  }
-}
-
-async function createResource(req, res) {
+app.post('/api/resources', async (req, res) => {
   try {
     const resource = await Resource.create(normalizeResourcePayload(req.body));
 
@@ -90,31 +63,18 @@ async function createResource(req, res) {
 
     return sendError(res, 500, 'Failed to create resource.', 'RESOURCE_CREATE_FAILED');
   }
-}
+});
 
-async function updateResource(req, res) {
-  const updateOptions = req.method === 'PATCH' ? { new: true, runValidators: true } : undefined;
-
+app.patch('/api/resources/:id', async (req, res) => {
   try {
-    const normalizedPayload = normalizeResourcePayload(req.body);
-
-    if (req.method === 'PUT') {
-      const resource = await Resource.findById(req.params.id);
-
-      if (!resource) {
-        return sendError(res, 404, 'Resource not found.', 'RESOURCE_NOT_FOUND');
+    const updatedResource = await Resource.findByIdAndUpdate(
+      req.params.id,
+      normalizeResourcePayload(req.body),
+      {
+        new: true,
+        runValidators: true
       }
-
-      resource.name = normalizedPayload.name;
-      resource.capacity_hours = normalizedPayload.capacity_hours;
-      resource.is_active = normalizedPayload.is_active;
-
-      await resource.save();
-
-      return res.status(200).json({ data: resource.toJSON() });
-    }
-
-    const updatedResource = await Resource.findByIdAndUpdate(req.params.id, normalizedPayload, updateOptions);
+    );
 
     if (!updatedResource) {
       return sendError(res, 404, 'Resource not found.', 'RESOURCE_NOT_FOUND');
@@ -136,17 +96,7 @@ async function updateResource(req, res) {
 
     return sendError(res, 500, 'Failed to update resource.', 'RESOURCE_UPDATE_FAILED');
   }
-}
-
-app.get('/resources', listResources);
-app.get('/api/resources', listResources);
-app.get('/resources/:id', getResourceById);
-app.get('/api/resources/:id', getResourceById);
-app.post('/resources', createResource);
-app.post('/api/resources', createResource);
-app.put('/resources/:id', updateResource);
-app.put('/api/resources/:id', updateResource);
-app.patch('/api/resources/:id', updateResource);
+});
 
 async function bootstrap() {
   try {
