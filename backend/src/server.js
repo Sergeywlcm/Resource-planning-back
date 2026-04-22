@@ -325,16 +325,16 @@ app.patch('/api/projects/:id', async (req, res) => {
   }
 });
 
-app.get('/allocations', async (_req, res) => {
+async function listAllocations(_req, res) {
   try {
     const allocations = await Allocation.find().sort({ start_date: 1, created_at: 1 });
     return sendSuccess(res, 200, allocations.map((allocation) => allocation.toJSON()));
   } catch (_error) {
     return sendError(res, 500, 'Failed to fetch allocations.');
   }
-});
+}
 
-app.get('/allocations/:id', async (req, res) => {
+async function getAllocationById(req, res) {
   try {
     const allocation = await Allocation.findById(req.params.id);
 
@@ -350,18 +350,18 @@ app.get('/allocations/:id', async (req, res) => {
 
     return sendError(res, 500, 'Failed to fetch allocation.');
   }
-});
+}
 
-app.post('/allocations', async (req, res) => {
+async function createAllocation(req, res) {
   try {
     const allocation = await Allocation.create(parseAllocationPayload(req.body));
     return sendSuccess(res, 201, allocation.toJSON());
   } catch (error) {
     return handleAllocationWriteError(error, res, 'create');
   }
-});
+}
 
-app.put('/allocations/:id', async (req, res) => {
+async function updateAllocation(req, res) {
   try {
     const updatedAllocation = await Allocation.findByIdAndUpdate(
       req.params.id,
@@ -380,9 +380,9 @@ app.put('/allocations/:id', async (req, res) => {
   } catch (error) {
     return handleAllocationWriteError(error, res, 'update');
   }
-});
+}
 
-app.delete('/allocations/:id', async (req, res) => {
+async function deleteAllocation(req, res) {
   try {
     const deletedAllocation = await Allocation.findByIdAndDelete(req.params.id);
 
@@ -398,7 +398,19 @@ app.delete('/allocations/:id', async (req, res) => {
 
     return sendError(res, 500, 'Failed to delete allocation.');
   }
-});
+}
+
+app.get('/allocations', listAllocations);
+app.get('/allocations/:id', getAllocationById);
+app.post('/allocations', createAllocation);
+app.put('/allocations/:id', updateAllocation);
+app.delete('/allocations/:id', deleteAllocation);
+
+app.get('/api/allocations', listAllocations);
+app.get('/api/allocations/:id', getAllocationById);
+app.post('/api/allocations', createAllocation);
+app.put('/api/allocations/:id', updateAllocation);
+app.delete('/api/allocations/:id', deleteAllocation);
 
 async function bootstrap() {
   try {
