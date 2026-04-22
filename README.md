@@ -54,15 +54,18 @@ Available endpoints:
 - `PUT /api/projects/:id` → update an existing project
 - `PATCH /api/projects/:id` → partially update an existing project
 - `GET /allocations` → list all allocations
-- `GET /allocations/:id` → get allocation by id
 - `POST /allocations` → create allocation (`resource_id`, `project_id`, `start_date`, `end_date`, and `hours_per_day` required)
 - `PUT /allocations/:id` → update an existing allocation
 - `DELETE /allocations/:id` → delete an allocation
 - `GET /api/allocations` → list all allocations (API namespace alias)
-- `GET /api/allocations/:id` → get allocation by id (API namespace alias)
 - `POST /api/allocations` → create allocation (API namespace alias)
 - `PUT /api/allocations/:id` → update an existing allocation (API namespace alias)
 - `DELETE /api/allocations/:id` → delete an allocation (API namespace alias)
+
+Allocation retrieve-by-id endpoints:
+
+- `GET /allocations/:id` → get allocation by id
+- `GET /api/allocations/:id` → get allocation by id (API namespace alias)
 
 ### 2) Frontend (React + Vite)
 
