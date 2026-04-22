@@ -95,7 +95,7 @@ function handleAllocationWriteError(error, res, actionLabel) {
   }
 
   if (error instanceof mongoose.Error.CastError) {
-    return sendError(res, 400, 'Invalid allocation id or payload value.', error.message);
+    return sendError(res, 400, 'Invalid allocation id.', error.message);
   }
 
   return sendError(res, 500, `Failed to ${actionLabel} allocation.`);
@@ -327,7 +327,7 @@ app.patch('/api/projects/:id', async (req, res) => {
 
 async function listAllocations(_req, res) {
   try {
-    const allocations = await Allocation.find().sort({ start_date: 1, created_at: 1 });
+    const allocations = await Allocation.find().sort({ created_at: 1 });
     return sendSuccess(res, 200, allocations.map((allocation) => allocation.toJSON()));
   } catch (_error) {
     return sendError(res, 500, 'Failed to fetch allocations.');
@@ -392,11 +392,7 @@ async function deleteAllocation(req, res) {
 
     return sendSuccess(res, 200, deletedAllocation.toJSON());
   } catch (error) {
-    if (error instanceof mongoose.Error.CastError) {
-      return sendError(res, 400, 'Invalid allocation id.', error.message);
-    }
-
-    return sendError(res, 500, 'Failed to delete allocation.');
+    return handleAllocationWriteError(error, res, 'delete');
   }
 }
 
