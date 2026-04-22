@@ -55,7 +55,7 @@ Available endpoints:
 - `PATCH /api/projects/:id` → partially update an existing project
 - `GET /allocations` → list all allocations
 - `GET /allocations/:id` → get allocation by id
-- `POST /allocations` → create allocation (`resource_id`, `project_id`, `start_date`, `end_date`, `hours_per_day` required)
+- `POST /allocations` → create allocation (`resource_id`, `project_id`, `start_date`, `end_date`, and `hours_per_day` required)
 - `PUT /allocations/:id` → update an existing allocation
 - `DELETE /allocations/:id` → delete an allocation
 - `GET /api/allocations` → list all allocations (API namespace alias)

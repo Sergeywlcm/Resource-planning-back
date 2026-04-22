@@ -400,17 +400,16 @@ async function deleteAllocation(req, res) {
   }
 }
 
-app.get('/allocations', listAllocations);
-app.get('/allocations/:id', getAllocationById);
-app.post('/allocations', createAllocation);
-app.put('/allocations/:id', updateAllocation);
-app.delete('/allocations/:id', deleteAllocation);
+function registerAllocationRoutes(prefix = '') {
+  app.get(`${prefix}/allocations`, listAllocations);
+  app.get(`${prefix}/allocations/:id`, getAllocationById);
+  app.post(`${prefix}/allocations`, createAllocation);
+  app.put(`${prefix}/allocations/:id`, updateAllocation);
+  app.delete(`${prefix}/allocations/:id`, deleteAllocation);
+}
 
-app.get('/api/allocations', listAllocations);
-app.get('/api/allocations/:id', getAllocationById);
-app.post('/api/allocations', createAllocation);
-app.put('/api/allocations/:id', updateAllocation);
-app.delete('/api/allocations/:id', deleteAllocation);
+registerAllocationRoutes();
+registerAllocationRoutes('/api');
 
 async function bootstrap() {
   try {
