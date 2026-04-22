@@ -44,6 +44,8 @@ Available endpoints:
 - `GET /api/ping` → `{ "message": "Backend is reachable" }`
 - `POST /api/resources` → create resource (`name` required, `capacity_hours` default `8`, `is_active` default `true`)
 - `PATCH /api/resources/:id` → update an existing resource
+- `POST /api/projects` → create project (`name` required, `is_active` default `true`)
+- `PATCH /api/projects/:id` → update an existing project
 
 ### 2) Frontend (React + Vite)
 
@@ -72,7 +74,7 @@ Frontend starts on `http://localhost:5173` and calls backend using `VITE_API_BAS
 ## Database schema strategy
 
 - `Resource` model: baseline catalog of assignable people with role and capacity.
-- `Project` model: tracks project identity, lifecycle status, and planned dates.
+- `Project` model: tracks project identity and active status.
 - `Allocation` model: joins `Resource` and `Project` with date-bounded allocation percentage.
 - All three models use Mongoose `timestamps` (`createdAt`, `updatedAt`).
 - The server runs schema synchronization (`createCollection` + `syncIndexes`) during startup.
