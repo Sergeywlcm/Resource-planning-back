@@ -5,6 +5,7 @@ import mongoose from 'mongoose';
 
 import { connectToDatabase, getDatabaseHealth } from './config/database.js';
 import { syncSchema } from './db/syncSchema.js';
+import { Project } from './models/project.model.js';
 import { Resource } from './models/resource.model.js';
 
 dotenv.config();
@@ -52,6 +53,29 @@ function handleResourceWriteError(error, res, actionLabel) {
   }
 
   return sendError(res, 500, `Failed to ${actionLabel} resource.`);
+}
+
+function parseProjectPayload(body) {
+  return {
+    name: body?.name,
+    is_active: body?.is_active
+  };
+}
+
+function handleProjectWriteError(error, res, actionLabel) {
+  if (error instanceof mongoose.Error.ValidationError) {
+    return sendError(res, 400, 'Validation failed.', error.message);
+  }
+
+  if (error instanceof mongoose.Error.CastError) {
+    return sendError(res, 400, 'Invalid project id.', error.message);
+  }
+
+  if (error?.code === 11000) {
+    return sendError(res, 409, 'Project name must be unique.');
+  }
+
+  return sendError(res, 500, `Failed to ${actionLabel} project.`);
 }
 
 app.get('/health', (_req, res) => {
@@ -152,6 +176,85 @@ app.post('/api/resources', async (req, res) => {
     return sendSuccess(res, 201, resource.toJSON());
   } catch (error) {
     return handleResourceWriteError(error, res, 'create');
+  }
+});
+
+app.get('/projects', async (_req, res) => {
+  try {
+    const projects = await Project.find().sort({ created_at: 1 });
+    return sendSuccess(res, 200, projects.map((project) => project.toJSON()));
+  } catch (_error) {
+    return sendError(res, 500, 'Failed to fetch projects.');
+  }
+});
+
+app.get('/projects/:id', async (req, res) => {
+  try {
+    const project = await Project.findById(req.params.id);
+
+    if (!project) {
+      return sendError(res, 404, 'Project not found.');
+    }
+
+    return sendSuccess(res, 200, project.toJSON());
+  } catch (error) {
+    if (error instanceof mongoose.Error.CastError) {
+      return sendError(res, 400, 'Invalid project id.', error.message);
+    }
+
+    return sendError(res, 500, 'Failed to fetch project.');
+  }
+});
+
+app.post('/projects', async (req, res) => {
+  try {
+    const project = await Project.create(parseProjectPayload(req.body));
+    return sendSuccess(res, 201, project.toJSON());
+  } catch (error) {
+    return handleProjectWriteError(error, res, 'create');
+  }
+});
+
+app.put('/projects/:id', async (req, res) => {
+  try {
+    const updatedProject = await Project.findByIdAndUpdate(req.params.id, parseProjectPayload(req.body), {
+      new: true,
+      runValidators: true
+    });
+
+    if (!updatedProject) {
+      return sendError(res, 404, 'Project not found.');
+    }
+
+    return sendSuccess(res, 200, updatedProject.toJSON());
+  } catch (error) {
+    return handleProjectWriteError(error, res, 'update');
+  }
+});
+
+app.post('/api/projects', async (req, res) => {
+  try {
+    const project = await Project.create(parseProjectPayload(req.body));
+    return sendSuccess(res, 201, project.toJSON());
+  } catch (error) {
+    return handleProjectWriteError(error, res, 'create');
+  }
+});
+
+app.patch('/api/projects/:id', async (req, res) => {
+  try {
+    const updatedProject = await Project.findByIdAndUpdate(req.params.id, parseProjectPayload(req.body), {
+      new: true,
+      runValidators: true
+    });
+
+    if (!updatedProject) {
+      return sendError(res, 404, 'Project not found.');
+    }
+
+    return sendSuccess(res, 200, updatedProject.toJSON());
+  } catch (error) {
+    return handleProjectWriteError(error, res, 'update');
   }
 });
 
