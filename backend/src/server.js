@@ -325,16 +325,25 @@ app.patch('/api/projects/:id', async (req, res) => {
   }
 });
 
-async function listAllocations(_req, res) {
+app.get('/allocations', async (_req, res) => {
   try {
     const allocations = await Allocation.find().sort({ created_at: 1 });
     return sendSuccess(res, 200, allocations.map((allocation) => allocation.toJSON()));
   } catch (_error) {
     return sendError(res, 500, 'Failed to fetch allocations.');
   }
-}
+});
 
-async function getAllocationById(req, res) {
+app.get('/api/allocations', async (_req, res) => {
+  try {
+    const allocations = await Allocation.find().sort({ created_at: 1 });
+    return sendSuccess(res, 200, allocations.map((allocation) => allocation.toJSON()));
+  } catch (_error) {
+    return sendError(res, 500, 'Failed to fetch allocations.');
+  }
+});
+
+app.get('/allocations/:id', async (req, res) => {
   try {
     const allocation = await Allocation.findById(req.params.id);
 
@@ -350,27 +359,50 @@ async function getAllocationById(req, res) {
 
     return sendError(res, 500, 'Failed to fetch allocation.');
   }
-}
+});
 
-async function createAllocation(req, res) {
+app.get('/api/allocations/:id', async (req, res) => {
+  try {
+    const allocation = await Allocation.findById(req.params.id);
+
+    if (!allocation) {
+      return sendError(res, 404, 'Allocation not found.');
+    }
+
+    return sendSuccess(res, 200, allocation.toJSON());
+  } catch (error) {
+    if (error instanceof mongoose.Error.CastError) {
+      return sendError(res, 400, 'Invalid allocation id.', error.message);
+    }
+
+    return sendError(res, 500, 'Failed to fetch allocation.');
+  }
+});
+
+app.post('/allocations', async (req, res) => {
   try {
     const allocation = await Allocation.create(parseAllocationPayload(req.body));
     return sendSuccess(res, 201, allocation.toJSON());
   } catch (error) {
     return handleAllocationWriteError(error, res, 'create');
   }
-}
+});
 
-async function updateAllocation(req, res) {
+app.post('/api/allocations', async (req, res) => {
   try {
-    const updatedAllocation = await Allocation.findByIdAndUpdate(
-      req.params.id,
-      parseAllocationPayload(req.body),
-      {
-        new: true,
-        runValidators: true
-      }
-    );
+    const allocation = await Allocation.create(parseAllocationPayload(req.body));
+    return sendSuccess(res, 201, allocation.toJSON());
+  } catch (error) {
+    return handleAllocationWriteError(error, res, 'create');
+  }
+});
+
+app.put('/allocations/:id', async (req, res) => {
+  try {
+    const updatedAllocation = await Allocation.findByIdAndUpdate(req.params.id, parseAllocationPayload(req.body), {
+      new: true,
+      runValidators: true
+    });
 
     if (!updatedAllocation) {
       return sendError(res, 404, 'Allocation not found.');
@@ -380,9 +412,26 @@ async function updateAllocation(req, res) {
   } catch (error) {
     return handleAllocationWriteError(error, res, 'update');
   }
-}
+});
 
-async function deleteAllocation(req, res) {
+app.put('/api/allocations/:id', async (req, res) => {
+  try {
+    const updatedAllocation = await Allocation.findByIdAndUpdate(req.params.id, parseAllocationPayload(req.body), {
+      new: true,
+      runValidators: true
+    });
+
+    if (!updatedAllocation) {
+      return sendError(res, 404, 'Allocation not found.');
+    }
+
+    return sendSuccess(res, 200, updatedAllocation.toJSON());
+  } catch (error) {
+    return handleAllocationWriteError(error, res, 'update');
+  }
+});
+
+app.delete('/allocations/:id', async (req, res) => {
   try {
     const deletedAllocation = await Allocation.findByIdAndDelete(req.params.id);
 
@@ -394,19 +443,21 @@ async function deleteAllocation(req, res) {
   } catch (error) {
     return handleAllocationWriteError(error, res, 'delete');
   }
-}
+});
 
-app.get('/allocations', listAllocations);
-app.get('/allocations/:id', getAllocationById);
-app.post('/allocations', createAllocation);
-app.put('/allocations/:id', updateAllocation);
-app.delete('/allocations/:id', deleteAllocation);
+app.delete('/api/allocations/:id', async (req, res) => {
+  try {
+    const deletedAllocation = await Allocation.findByIdAndDelete(req.params.id);
 
-app.get('/api/allocations', listAllocations);
-app.get('/api/allocations/:id', getAllocationById);
-app.post('/api/allocations', createAllocation);
-app.put('/api/allocations/:id', updateAllocation);
-app.delete('/api/allocations/:id', deleteAllocation);
+    if (!deletedAllocation) {
+      return sendError(res, 404, 'Allocation not found.');
+    }
+
+    return sendSuccess(res, 200, deletedAllocation.toJSON());
+  } catch (error) {
+    return handleAllocationWriteError(error, res, 'delete');
+  }
+});
 
 async function bootstrap() {
   try {
