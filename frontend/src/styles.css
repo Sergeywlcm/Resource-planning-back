@@ -55,23 +55,25 @@ h2 {
   flex-wrap: wrap;
 }
 
-.resource-form {
+.project-form {
   display: grid;
   gap: 0.75rem;
 }
 
-.resource-form label {
+.project-form label {
   display: grid;
   gap: 0.3rem;
   font-weight: 600;
 }
 
-input {
+input,
+select {
   width: 100%;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
   padding: 0.55rem 0.65rem;
   font-size: 1rem;
+  background: #ffffff;
 }
 
 .checkbox {
@@ -113,7 +115,7 @@ button.secondary.active {
   font-weight: 600;
 }
 
-.resource-list {
+.project-list {
   list-style: none;
   padding: 0;
   margin: 0;
@@ -121,7 +123,7 @@ button.secondary.active {
   gap: 0.75rem;
 }
 
-.resource-list li {
+.project-list li {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -130,7 +132,7 @@ button.secondary.active {
   padding: 0.75rem;
 }
 
-.resource-list .name {
+.project-list .name {
   font-weight: 600;
 }
 
