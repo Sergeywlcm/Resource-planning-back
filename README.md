@@ -53,6 +53,11 @@ Available endpoints:
 - `POST /api/projects` → create project (`name` required, `is_active` default `true`)
 - `PUT /api/projects/:id` → update an existing project
 - `PATCH /api/projects/:id` → partially update an existing project
+- `GET /allocations` → list all allocations
+- `GET /allocations/:id` → get allocation by id
+- `POST /allocations` → create allocation (`resource_id`, `project_id`, `start_date`, `end_date`, `hours_per_day` required)
+- `PUT /allocations/:id` → update an existing allocation
+- `DELETE /allocations/:id` → delete an allocation
 
 ### 2) Frontend (React + Vite)
 
