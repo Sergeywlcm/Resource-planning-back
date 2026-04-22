@@ -22,6 +22,7 @@ export default function App() {
   const [isSaving, setIsSaving] = useState(false);
   const [formError, setFormError] = useState('');
   const [formSuccess, setFormSuccess] = useState('');
+  const [activeView, setActiveView] = useState('list');
 
   const isEditMode = useMemo(() => Boolean(editingResourceId), [editingResourceId]);
 
@@ -58,6 +59,18 @@ export default function App() {
     }));
   }
 
+  function resetForm() {
+    setEditingResourceId('');
+    setFormData(defaultForm);
+    setFormError('');
+  }
+
+  function startCreate() {
+    resetForm();
+    setFormSuccess('');
+    setActiveView('create');
+  }
+
   function startEdit(resource) {
     setEditingResourceId(resource.id);
     setFormData({
@@ -67,11 +80,12 @@ export default function App() {
     });
     setFormError('');
     setFormSuccess(`Editing ${resource.name}.`);
+    setActiveView('edit');
   }
 
-  function resetForm() {
-    setEditingResourceId('');
-    setFormData(defaultForm);
+  function openList() {
+    resetForm();
+    setActiveView('list');
   }
 
   async function handleSubmit(event) {
@@ -104,12 +118,15 @@ export default function App() {
       setFormSuccess(successMessage);
       resetForm();
       await loadResources();
+      setActiveView('list');
     } catch (error) {
       setFormError(error.message);
     } finally {
       setIsSaving(false);
     }
   }
+
+  const isFormView = activeView === 'create' || activeView === 'edit';
 
   return (
     <main className="app">
@@ -118,82 +135,102 @@ export default function App() {
         <p className="muted">Create, edit, and track resource availability.</p>
       </header>
 
-      <section className="panel" aria-label="Resource form">
-        <h2>{isEditMode ? 'Edit resource' : 'Create resource'}</h2>
-        <form onSubmit={handleSubmit} className="resource-form">
-          <label>
-            Resource name
-            <input
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              placeholder="e.g. Backend Engineer"
-              required
-              maxLength={120}
-            />
-          </label>
+      <nav className="panel view-nav" aria-label="Resource pages">
+        <button
+          type="button"
+          className={activeView === 'list' ? 'secondary active' : 'secondary'}
+          onClick={openList}
+        >
+          Resource list page
+        </button>
+        <button
+          type="button"
+          className={activeView === 'create' ? 'secondary active' : 'secondary'}
+          onClick={startCreate}
+        >
+          Create resource page
+        </button>
+      </nav>
 
-          <label>
-            Capacity hours
-            <input
-              type="number"
-              name="capacity_hours"
-              min={1}
-              max={24}
-              value={formData.capacity_hours}
-              onChange={handleChange}
-            />
-          </label>
+      {isFormView && (
+        <section className="panel" aria-label="Resource form">
+          <h2>{isEditMode ? 'Edit resource' : 'Create resource'}</h2>
+          <form onSubmit={handleSubmit} className="resource-form">
+            <label>
+              Resource name
+              <input
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                placeholder="e.g. Backend Engineer"
+                required
+                maxLength={120}
+              />
+            </label>
 
-          <label className="checkbox">
-            <input
-              type="checkbox"
-              name="is_active"
-              checked={formData.is_active}
-              onChange={handleChange}
-            />
-            Active
-          </label>
+            <label>
+              Capacity hours
+              <input
+                type="number"
+                name="capacity_hours"
+                min={1}
+                max={24}
+                value={formData.capacity_hours}
+                onChange={handleChange}
+              />
+            </label>
 
-          <div className="form-actions">
-            <button type="submit" disabled={isSaving}>
-              {isSaving ? 'Saving...' : isEditMode ? 'Save changes' : 'Create resource'}
-            </button>
-            {isEditMode && (
-              <button type="button" className="secondary" onClick={resetForm}>
-                Cancel edit
+            <label className="checkbox">
+              <input
+                type="checkbox"
+                name="is_active"
+                checked={formData.is_active}
+                onChange={handleChange}
+              />
+              Active
+            </label>
+
+            <div className="form-actions">
+              <button type="submit" disabled={isSaving}>
+                {isSaving ? 'Saving...' : isEditMode ? 'Save changes' : 'Create resource'}
               </button>
-            )}
-          </div>
-        </form>
-        {formError && <p className="error">{formError}</p>}
-        {formSuccess && <p className="success">{formSuccess}</p>}
-      </section>
+              <button type="button" className="secondary" onClick={openList}>
+                Cancel
+              </button>
+            </div>
+          </form>
+          {formError && <p className="error">{formError}</p>}
+          {formSuccess && <p className="success">{formSuccess}</p>}
+        </section>
+      )}
 
-      <section className="panel" aria-label="Resource list">
-        <h2>Resource list</h2>
-        {loadingResources && <p>Loading resources...</p>}
-        {resourceError && <p className="error">{resourceError}</p>}
+      {activeView === 'list' && (
+        <section className="panel" aria-label="Resource list">
+          <h2>Resource list</h2>
+          {formSuccess && <p className="success">{formSuccess}</p>}
+          {loadingResources && <p>Loading resources...</p>}
+          {resourceError && <p className="error">{resourceError}</p>}
 
-        {!loadingResources && !resourceError && (
-          <ul className="resource-list">
-            {resources.length === 0 && <li className="empty">No resources found.</li>}
-            {resources.map((resource) => (
-              <li key={resource.id}>
-                <div>
-                  <p className="name">{resource.name}</p>
-                  <p className={`status ${resource.is_active ? 'active' : 'inactive'}`}>
-                    {statusLabel(resource.is_active)}
-                  </p>
-                </div>
-                <button type="button" className="secondary" onClick={() => startEdit(resource)}>
-                  Edit
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+          {!loadingResources && !resourceError && (
+            <ul className="resource-list">
+              {resources.length === 0 && <li className="empty">No resources found.</li>}
+              {resources.map((resource) => (
+                <li key={resource.id}>
+                  <div>
+                    <p className="name">{resource.name}</p>
+                    <p className={`status ${resource.is_active ? 'active' : 'inactive'}`}>
+                      {statusLabel(resource.is_active)}
+                    </p>
+                  </div>
+                  <button type="button" className="secondary" onClick={() => startEdit(resource)}>
+                    Edit
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
     </main>
   );
 }
