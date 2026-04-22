@@ -7,31 +7,69 @@ const defaultProjectForm = {
   is_active: true
 };
 
+const defaultAllocationForm = {
+  resource_id: '',
+  project_id: '',
+  start_date: '',
+  end_date: '',
+  hours_per_day: ''
+};
+
 function statusLabel(isActive) {
   return isActive ? 'Active' : 'Inactive';
+}
+
+function toDateInputValue(rawValue) {
+  if (!rawValue) {
+    return '';
+  }
+
+  return new Date(rawValue).toISOString().slice(0, 10);
 }
 
 export default function App() {
   const [resources, setResources] = useState([]);
   const [projects, setProjects] = useState([]);
+  const [allocations, setAllocations] = useState([]);
+
   const [loadingResources, setLoadingResources] = useState(true);
   const [loadingProjects, setLoadingProjects] = useState(true);
+  const [loadingAllocations, setLoadingAllocations] = useState(true);
+
   const [resourceError, setResourceError] = useState('');
   const [projectError, setProjectError] = useState('');
+  const [allocationError, setAllocationError] = useState('');
 
   const [projectFormData, setProjectFormData] = useState(defaultProjectForm);
   const [editingProjectId, setEditingProjectId] = useState('');
   const [isSavingProject, setIsSavingProject] = useState(false);
   const [projectFormError, setProjectFormError] = useState('');
   const [projectFormSuccess, setProjectFormSuccess] = useState('');
+
+  const [allocationFormData, setAllocationFormData] = useState(defaultAllocationForm);
+  const [editingAllocationId, setEditingAllocationId] = useState('');
+  const [isSavingAllocation, setIsSavingAllocation] = useState(false);
+  const [allocationFormError, setAllocationFormError] = useState('');
+  const [allocationFormSuccess, setAllocationFormSuccess] = useState('');
+
   const [activeView, setActiveView] = useState('project-list');
 
-  const [allocationDraft, setAllocationDraft] = useState({
-    project_id: '',
-    resource_id: ''
-  });
+  const isProjectEditMode = useMemo(() => Boolean(editingProjectId), [editingProjectId]);
+  const isAllocationEditMode = useMemo(() => Boolean(editingAllocationId), [editingAllocationId]);
 
-  const isEditMode = useMemo(() => Boolean(editingProjectId), [editingProjectId]);
+  const resourceNameById = useMemo(() => {
+    return resources.reduce((acc, resource) => {
+      acc[resource.id] = resource.name;
+      return acc;
+    }, {});
+  }, [resources]);
+
+  const projectNameById = useMemo(() => {
+    return projects.reduce((acc, project) => {
+      acc[project.id] = project.name;
+      return acc;
+    }, {});
+  }, [projects]);
 
   async function loadResources() {
     setLoadingResources(true);
@@ -73,9 +111,30 @@ export default function App() {
     }
   }
 
+  async function loadAllocations() {
+    setLoadingAllocations(true);
+    setAllocationError('');
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/allocations`);
+      const payload = await response.json();
+
+      if (!response.ok || !Array.isArray(payload?.data)) {
+        throw new Error(payload?.error?.message ?? 'Unable to load allocations.');
+      }
+
+      setAllocations(payload.data);
+    } catch (error) {
+      setAllocationError(error.message);
+    } finally {
+      setLoadingAllocations(false);
+    }
+  }
+
   useEffect(() => {
     loadResources();
     loadProjects();
+    loadAllocations();
   }, []);
 
   function handleProjectFormChange(event) {
@@ -87,10 +146,10 @@ export default function App() {
     }));
   }
 
-  function handleAllocationDraftChange(event) {
+  function handleAllocationFormChange(event) {
     const { name, value } = event.target;
 
-    setAllocationDraft((current) => ({
+    setAllocationFormData((current) => ({
       ...current,
       [name]: value
     }));
@@ -100,6 +159,12 @@ export default function App() {
     setEditingProjectId('');
     setProjectFormData(defaultProjectForm);
     setProjectFormError('');
+  }
+
+  function resetAllocationForm() {
+    setEditingAllocationId('');
+    setAllocationFormData(defaultAllocationForm);
+    setAllocationFormError('');
   }
 
   function startCreateProject() {
@@ -119,9 +184,60 @@ export default function App() {
     setActiveView('project-edit');
   }
 
+  function startCreateAllocation() {
+    resetAllocationForm();
+    setAllocationFormSuccess('');
+    setActiveView('allocation-create');
+  }
+
+  function startEditAllocation(allocation) {
+    setEditingAllocationId(allocation.id);
+    setAllocationFormData({
+      resource_id: allocation.resource_id,
+      project_id: allocation.project_id,
+      start_date: toDateInputValue(allocation.start_date),
+      end_date: toDateInputValue(allocation.end_date),
+      hours_per_day: String(allocation.hours_per_day)
+    });
+    setAllocationFormError('');
+    setAllocationFormSuccess('Editing allocation.');
+    setActiveView('allocation-edit');
+  }
+
   function openProjectList() {
     resetProjectForm();
     setActiveView('project-list');
+  }
+
+  function openAllocationList() {
+    resetAllocationForm();
+    setActiveView('allocation-list');
+  }
+
+  function validateAllocationForm() {
+    if (!allocationFormData.resource_id) {
+      return 'Please select a resource.';
+    }
+
+    if (!allocationFormData.project_id) {
+      return 'Please select a project.';
+    }
+
+    if (!allocationFormData.start_date || !allocationFormData.end_date) {
+      return 'Please enter both start date and end date.';
+    }
+
+    if (allocationFormData.end_date < allocationFormData.start_date) {
+      return 'End date must be on or after start date.';
+    }
+
+    const numericHours = Number(allocationFormData.hours_per_day);
+
+    if (!Number.isFinite(numericHours) || numericHours <= 0) {
+      return 'Hours per day must be a number greater than 0.';
+    }
+
+    return '';
   }
 
   async function handleProjectSubmit(event) {
@@ -130,10 +246,10 @@ export default function App() {
     setProjectFormError('');
     setProjectFormSuccess('');
 
-    const endpoint = isEditMode
+    const endpoint = isProjectEditMode
       ? `${apiBaseUrl}/projects/${editingProjectId}`
       : `${apiBaseUrl}/projects`;
-    const method = isEditMode ? 'PUT' : 'POST';
+    const method = isProjectEditMode ? 'PUT' : 'POST';
 
     try {
       const response = await fetch(endpoint, {
@@ -147,7 +263,7 @@ export default function App() {
         throw new Error(payload?.error?.message ?? 'Unable to save project.');
       }
 
-      const successMessage = isEditMode
+      const successMessage = isProjectEditMode
         ? `${payload.data.name} updated successfully.`
         : `${payload.data.name} created successfully.`;
 
@@ -162,35 +278,118 @@ export default function App() {
     }
   }
 
+  async function handleAllocationSubmit(event) {
+    event.preventDefault();
+    setAllocationFormError('');
+    setAllocationFormSuccess('');
+
+    const validationError = validateAllocationForm();
+
+    if (validationError) {
+      setAllocationFormError(validationError);
+      return;
+    }
+
+    setIsSavingAllocation(true);
+
+    const endpoint = isAllocationEditMode
+      ? `${apiBaseUrl}/allocations/${editingAllocationId}`
+      : `${apiBaseUrl}/allocations`;
+    const method = isAllocationEditMode ? 'PUT' : 'POST';
+
+    const payload = {
+      ...allocationFormData,
+      hours_per_day: Number(allocationFormData.hours_per_day)
+    };
+
+    try {
+      const response = await fetch(endpoint, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const responsePayload = await response.json();
+
+      if (!response.ok || !responsePayload?.data) {
+        throw new Error(responsePayload?.error?.message ?? 'Unable to save allocation.');
+      }
+
+      setAllocationFormSuccess(isAllocationEditMode ? 'Allocation updated successfully.' : 'Allocation created successfully.');
+      resetAllocationForm();
+      await loadAllocations();
+      setActiveView('allocation-list');
+    } catch (error) {
+      setAllocationFormError(error.message);
+    } finally {
+      setIsSavingAllocation(false);
+    }
+  }
+
+  async function handleAllocationDelete(allocationId) {
+    setAllocationFormError('');
+    setAllocationFormSuccess('');
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/allocations/${allocationId}`, {
+        method: 'DELETE'
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload?.error?.message ?? 'Unable to delete allocation.');
+      }
+
+      setAllocationFormSuccess('Allocation deleted successfully.');
+      await loadAllocations();
+    } catch (error) {
+      setAllocationFormError(error.message);
+    }
+  }
+
   const isProjectFormView = activeView === 'project-create' || activeView === 'project-edit';
+  const isAllocationFormView = activeView === 'allocation-create' || activeView === 'allocation-edit';
 
   return (
     <main className="app">
       <header className="app__header">
-        <h1>Project Management</h1>
-        <p className="muted">View, create, and edit projects used for resource allocations.</p>
+        <h1>Resource Planning</h1>
+        <p className="muted">Manage projects and create, edit, and delete allocations.</p>
       </header>
 
-      <nav className="panel view-nav" aria-label="Project pages">
+      <nav className="panel view-nav" aria-label="Pages">
         <button
           type="button"
           className={activeView === 'project-list' ? 'secondary active' : 'secondary'}
           onClick={openProjectList}
         >
-          Project list page
+          Project list
         </button>
         <button
           type="button"
           className={activeView === 'project-create' ? 'secondary active' : 'secondary'}
           onClick={startCreateProject}
         >
-          Create project page
+          Create project
+        </button>
+        <button
+          type="button"
+          className={activeView === 'allocation-list' ? 'secondary active' : 'secondary'}
+          onClick={openAllocationList}
+        >
+          Allocation list
+        </button>
+        <button
+          type="button"
+          className={activeView === 'allocation-create' ? 'secondary active' : 'secondary'}
+          onClick={startCreateAllocation}
+        >
+          Create allocation
         </button>
       </nav>
 
       {isProjectFormView && (
         <section className="panel" aria-label="Project form">
-          <h2>{isEditMode ? 'Edit project' : 'Create project'}</h2>
+          <h2>{isProjectEditMode ? 'Edit project' : 'Create project'}</h2>
           <form onSubmit={handleProjectSubmit} className="project-form">
             <label>
               Project name
@@ -216,7 +415,7 @@ export default function App() {
 
             <div className="form-actions">
               <button type="submit" disabled={isSavingProject}>
-                {isSavingProject ? 'Saving...' : isEditMode ? 'Save changes' : 'Create project'}
+                {isSavingProject ? 'Saving...' : isProjectEditMode ? 'Save changes' : 'Create project'}
               </button>
               <button type="button" className="secondary" onClick={openProjectList}>
                 Cancel
@@ -229,73 +428,161 @@ export default function App() {
       )}
 
       {activeView === 'project-list' && (
-        <>
-          <section className="panel" aria-label="Project list">
-            <h2>Project list</h2>
-            {projectFormSuccess && <p className="success">{projectFormSuccess}</p>}
-            {loadingProjects && <p>Loading projects...</p>}
-            {projectError && <p className="error">{projectError}</p>}
+        <section className="panel" aria-label="Project list">
+          <h2>Project list</h2>
+          {projectFormSuccess && <p className="success">{projectFormSuccess}</p>}
+          {loadingProjects && <p>Loading projects...</p>}
+          {projectError && <p className="error">{projectError}</p>}
 
-            {!loadingProjects && !projectError && (
-              <ul className="project-list">
-                {projects.length === 0 && <li className="empty">No projects found.</li>}
+          {!loadingProjects && !projectError && (
+            <ul className="project-list">
+              {projects.length === 0 && <li className="empty">No projects found.</li>}
+              {projects.map((project) => (
+                <li key={project.id}>
+                  <div>
+                    <p className="name">{project.name}</p>
+                    <p className={`status ${project.is_active ? 'active' : 'inactive'}`}>
+                      {statusLabel(project.is_active)}
+                    </p>
+                  </div>
+                  <button type="button" className="secondary" onClick={() => startEditProject(project)}>
+                    Edit
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+
+      {isAllocationFormView && (
+        <section className="panel" aria-label="Allocation form">
+          <h2>{isAllocationEditMode ? 'Edit allocation' : 'Create allocation'}</h2>
+          <form onSubmit={handleAllocationSubmit} className="project-form">
+            <label>
+              Resource
+              <select
+                name="resource_id"
+                value={allocationFormData.resource_id}
+                onChange={handleAllocationFormChange}
+                required
+              >
+                <option value="">Select a resource</option>
+                {resources.map((resource) => (
+                  <option key={resource.id} value={resource.id}>
+                    {resource.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              Project
+              <select
+                name="project_id"
+                value={allocationFormData.project_id}
+                onChange={handleAllocationFormChange}
+                required
+              >
+                <option value="">Select a project</option>
                 {projects.map((project) => (
-                  <li key={project.id}>
-                    <div>
-                      <p className="name">{project.name}</p>
-                      <p className={`status ${project.is_active ? 'active' : 'inactive'}`}>
-                        {statusLabel(project.is_active)}
-                      </p>
-                    </div>
-                    <button type="button" className="secondary" onClick={() => startEditProject(project)}>
+                  <option key={project.id} value={project.id}>
+                    {project.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              Start date
+              <input
+                type="date"
+                name="start_date"
+                value={allocationFormData.start_date}
+                onChange={handleAllocationFormChange}
+                required
+              />
+            </label>
+
+            <label>
+              End date
+              <input
+                type="date"
+                name="end_date"
+                value={allocationFormData.end_date}
+                onChange={handleAllocationFormChange}
+                required
+              />
+            </label>
+
+            <label>
+              Hours per day
+              <input
+                type="number"
+                min="0.25"
+                max="24"
+                step="0.25"
+                name="hours_per_day"
+                value={allocationFormData.hours_per_day}
+                onChange={handleAllocationFormChange}
+                required
+              />
+            </label>
+
+            <div className="form-actions">
+              <button type="submit" disabled={isSavingAllocation || loadingResources || loadingProjects}>
+                {isSavingAllocation ? 'Saving...' : isAllocationEditMode ? 'Save changes' : 'Create allocation'}
+              </button>
+              <button type="button" className="secondary" onClick={openAllocationList}>
+                Cancel
+              </button>
+            </div>
+          </form>
+
+          {loadingResources && <p>Loading resources...</p>}
+          {loadingProjects && <p>Loading projects...</p>}
+          {resourceError && <p className="error">{resourceError}</p>}
+          {projectError && <p className="error">{projectError}</p>}
+          {allocationFormError && <p className="error">{allocationFormError}</p>}
+          {allocationFormSuccess && <p className="success">{allocationFormSuccess}</p>}
+        </section>
+      )}
+
+      {activeView === 'allocation-list' && (
+        <section className="panel" aria-label="Allocation list">
+          <h2>Allocation list</h2>
+          <p className="muted">Create and maintain allocation plans by resource, project, date range, and hours per day.</p>
+          {allocationFormSuccess && <p className="success">{allocationFormSuccess}</p>}
+          {allocationFormError && <p className="error">{allocationFormError}</p>}
+          {allocationError && <p className="error">{allocationError}</p>}
+          {loadingAllocations && <p>Loading allocations...</p>}
+
+          {!loadingAllocations && !allocationError && (
+            <ul className="project-list allocation-list">
+              {allocations.length === 0 && <li className="empty">No allocations found.</li>}
+              {allocations.map((allocation) => (
+                <li key={allocation.id}>
+                  <div>
+                    <p className="name">{resourceNameById[allocation.resource_id] ?? 'Unknown resource'}</p>
+                    <p className="muted">Project: {projectNameById[allocation.project_id] ?? 'Unknown project'}</p>
+                    <p className="muted">
+                      {toDateInputValue(allocation.start_date)} → {toDateInputValue(allocation.end_date)}
+                    </p>
+                    <p className="muted">{allocation.hours_per_day} hours/day</p>
+                  </div>
+                  <div className="form-actions">
+                    <button type="button" className="secondary" onClick={() => startEditAllocation(allocation)}>
                       Edit
                     </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-
-          <section className="panel" aria-label="Allocation form selectors">
-            <h2>Allocation form selectors</h2>
-            <p className="muted">Projects are available here immediately after they are saved.</p>
-            <form className="project-form" onSubmit={(event) => event.preventDefault()}>
-              <label>
-                Project
-                <select
-                  name="project_id"
-                  value={allocationDraft.project_id}
-                  onChange={handleAllocationDraftChange}
-                >
-                  <option value="">Select a project</option>
-                  {projects.map((project) => (
-                    <option key={project.id} value={project.id}>
-                      {project.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label>
-                Resource
-                <select
-                  name="resource_id"
-                  value={allocationDraft.resource_id}
-                  onChange={handleAllocationDraftChange}
-                >
-                  <option value="">Select a resource</option>
-                  {resources.map((resource) => (
-                    <option key={resource.id} value={resource.id}>
-                      {resource.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </form>
-            {loadingResources && <p>Loading resources for selector...</p>}
-            {resourceError && <p className="error">{resourceError}</p>}
-          </section>
-        </>
+                    <button type="button" onClick={() => handleAllocationDelete(allocation.id)}>
+                      Delete
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       )}
     </main>
   );
