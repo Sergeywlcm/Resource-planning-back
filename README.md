@@ -44,8 +44,15 @@ Available endpoints:
 - `GET /api/ping` → `{ "message": "Backend is reachable" }`
 - `POST /api/resources` → create resource (`name` required, `capacity_hours` default `8`, `is_active` default `true`)
 - `PATCH /api/resources/:id` → update an existing resource
+- `GET /projects` → list all projects
+- `GET /projects/:id` → get project by id
+- `POST /projects` → create project (`name` required, `is_active` default `true`)
+- `PUT /projects/:id` → update an existing project
+- `GET /api/projects` → list all projects (API namespace alias)
+- `GET /api/projects/:id` → get project by id (API namespace alias)
 - `POST /api/projects` → create project (`name` required, `is_active` default `true`)
-- `PATCH /api/projects/:id` → update an existing project
+- `PUT /api/projects/:id` → update an existing project
+- `PATCH /api/projects/:id` → partially update an existing project
 
 ### 2) Frontend (React + Vite)
 
