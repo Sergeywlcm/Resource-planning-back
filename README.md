@@ -62,11 +62,6 @@ Available endpoints:
 - `PUT /api/allocations/:id` → update an existing allocation (API namespace alias)
 - `DELETE /api/allocations/:id` → delete an allocation (API namespace alias)
 
-Allocation retrieve-by-id endpoints:
-
-- `GET /allocations/:id` → get allocation by id
-- `GET /api/allocations/:id` → get allocation by id (API namespace alias)
-
 ### 2) Frontend (React + Vite)
 
 ```bash
