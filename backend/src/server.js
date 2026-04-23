@@ -426,6 +426,45 @@ app.get('/reports/resource-workload', handleResourceWorkloadReport);
 app.get('/api/reports/resource-workload', handleResourceWorkloadReport);
 app.get('/reports/project-workload', handleProjectWorkloadReport);
 app.get('/api/reports/project-workload', handleProjectWorkloadReport);
+app.get('/reports/resource-workload', async (req, res) => {
+  try {
+    const { startDate, endDate } = parseDateRangeQuery(req);
+
+    const allocations = await Allocation.find({
+      start_date: { $lte: endDate },
+      end_date: { $gte: startDate }
+    }).sort({ resource_id: 1, start_date: 1, end_date: 1, created_at: 1 });
+
+    const workloadByResource = aggregateResourceDailyWorkload(allocations, startDate, endDate);
+    return sendSuccess(res, 200, workloadByResource);
+  } catch (error) {
+    if (error.message === 'start_date and end_date are required.' || error.message === 'start_date must be on or before end_date.' || error.message === 'Invalid date input.') {
+      return sendError(res, 400, error.message);
+    }
+
+    return sendError(res, 500, 'Failed to fetch resource workload.');
+  }
+});
+
+app.get('/api/reports/resource-workload', async (req, res) => {
+  try {
+    const { startDate, endDate } = parseDateRangeQuery(req);
+
+    const allocations = await Allocation.find({
+      start_date: { $lte: endDate },
+      end_date: { $gte: startDate }
+    }).sort({ resource_id: 1, start_date: 1, end_date: 1, created_at: 1 });
+
+    const workloadByResource = aggregateResourceDailyWorkload(allocations, startDate, endDate);
+    return sendSuccess(res, 200, workloadByResource);
+  } catch (error) {
+    if (error.message === 'start_date and end_date are required.' || error.message === 'start_date must be on or before end_date.' || error.message === 'Invalid date input.') {
+      return sendError(res, 400, error.message);
+    }
+
+    return sendError(res, 500, 'Failed to fetch resource workload.');
+  }
+});
 
 app.post('/allocations', async (req, res) => {
   try {
