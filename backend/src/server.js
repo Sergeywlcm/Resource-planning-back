@@ -423,42 +423,6 @@ app.delete('/api/allocations/:id', async (req, res) => {
   }
 });
 
-app.get('/allocations/:id', async (req, res) => {
-  try {
-    const allocation = await Allocation.findById(req.params.id);
-
-    if (!allocation) {
-      return sendError(res, 404, 'Allocation not found.');
-    }
-
-    return sendSuccess(res, 200, allocation.toJSON());
-  } catch (error) {
-    if (error instanceof mongoose.Error.CastError) {
-      return sendError(res, 400, 'Invalid allocation id.', error.message);
-    }
-
-    return sendError(res, 500, 'Failed to fetch allocation.');
-  }
-});
-
-app.get('/api/allocations/:id', async (req, res) => {
-  try {
-    const allocation = await Allocation.findById(req.params.id);
-
-    if (!allocation) {
-      return sendError(res, 404, 'Allocation not found.');
-    }
-
-    return sendSuccess(res, 200, allocation.toJSON());
-  } catch (error) {
-    if (error instanceof mongoose.Error.CastError) {
-      return sendError(res, 400, 'Invalid allocation id.', error.message);
-    }
-
-    return sendError(res, 500, 'Failed to fetch allocation.');
-  }
-});
-
 async function bootstrap() {
   try {
     await connectToDatabase();
