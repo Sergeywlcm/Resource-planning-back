@@ -8,6 +8,7 @@ import { syncSchema } from './db/syncSchema.js';
 import { Allocation } from './models/allocation.model.js';
 import { Project } from './models/project.model.js';
 import { Resource } from './models/resource.model.js';
+import { aggregateResourceDailyWorkload, normalizeUtcDate } from './utils/resourceDailyWorkload.util.js';
 
 dotenv.config();
 
@@ -99,6 +100,23 @@ function handleAllocationWriteError(error, res, actionLabel) {
   }
 
   return sendError(res, 500, `Failed to ${actionLabel} allocation.`);
+}
+
+function parseDateRangeQuery(req) {
+  const { start_date: startDateRaw, end_date: endDateRaw } = req.query;
+
+  if (!startDateRaw || !endDateRaw) {
+    throw new Error('start_date and end_date are required.');
+  }
+
+  const startDate = normalizeUtcDate(startDateRaw);
+  const endDate = normalizeUtcDate(endDateRaw);
+
+  if (startDate > endDate) {
+    throw new Error('start_date must be on or before end_date.');
+  }
+
+  return { startDate, endDate };
 }
 
 app.get('/health', (_req, res) => {
@@ -340,6 +358,46 @@ app.get('/api/allocations', async (_req, res) => {
     return sendSuccess(res, 200, allocations.map((allocation) => allocation.toJSON()));
   } catch (_error) {
     return sendError(res, 500, 'Failed to fetch allocations.');
+  }
+});
+
+app.get('/reports/resource-workload', async (req, res) => {
+  try {
+    const { startDate, endDate } = parseDateRangeQuery(req);
+
+    const allocations = await Allocation.find({
+      start_date: { $lte: endDate },
+      end_date: { $gte: startDate }
+    }).sort({ resource_id: 1, start_date: 1, end_date: 1, created_at: 1 });
+
+    const workloadByResource = aggregateResourceDailyWorkload(allocations, startDate, endDate);
+    return sendSuccess(res, 200, workloadByResource);
+  } catch (error) {
+    if (error.message === 'start_date and end_date are required.' || error.message === 'start_date must be on or before end_date.' || error.message === 'Invalid date input.') {
+      return sendError(res, 400, error.message);
+    }
+
+    return sendError(res, 500, 'Failed to fetch resource workload.');
+  }
+});
+
+app.get('/api/reports/resource-workload', async (req, res) => {
+  try {
+    const { startDate, endDate } = parseDateRangeQuery(req);
+
+    const allocations = await Allocation.find({
+      start_date: { $lte: endDate },
+      end_date: { $gte: startDate }
+    }).sort({ resource_id: 1, start_date: 1, end_date: 1, created_at: 1 });
+
+    const workloadByResource = aggregateResourceDailyWorkload(allocations, startDate, endDate);
+    return sendSuccess(res, 200, workloadByResource);
+  } catch (error) {
+    if (error.message === 'start_date and end_date are required.' || error.message === 'start_date must be on or before end_date.' || error.message === 'Invalid date input.') {
+      return sendError(res, 400, error.message);
+    }
+
+    return sendError(res, 500, 'Failed to fetch resource workload.');
   }
 });
 
