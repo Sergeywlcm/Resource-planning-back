@@ -8,6 +8,7 @@ import { syncSchema } from './db/syncSchema.js';
 import { Allocation } from './models/allocation.model.js';
 import { Project } from './models/project.model.js';
 import { Resource } from './models/resource.model.js';
+import { aggregateProjectDailyWorkload } from './utils/projectDailyWorkload.util.js';
 import { aggregateResourceDailyWorkload, normalizeUtcDate } from './utils/resourceDailyWorkload.util.js';
 
 dotenv.config();
@@ -117,6 +118,66 @@ function parseDateRangeQuery(req) {
   }
 
   return { startDate, endDate };
+}
+
+function isDateRangeQueryError(message) {
+  return message === 'start_date and end_date are required.' || message === 'start_date must be on or before end_date.' || message === 'Invalid date input.'
+}
+
+async function handleResourceWorkloadReport(req, res) {
+  try {
+    const { startDate, endDate } = parseDateRangeQuery(req);
+
+    const allocations = await Allocation.find({
+      start_date: { $lte: endDate },
+      end_date: { $gte: startDate }
+    }).sort({ resource_id: 1, start_date: 1, end_date: 1, created_at: 1 });
+
+    const workloadByResource = aggregateResourceDailyWorkload(allocations, startDate, endDate);
+    return sendSuccess(res, 200, workloadByResource);
+  } catch (error) {
+    if (isDateRangeQueryError(error.message)) {
+      return sendError(res, 400, error.message);
+    }
+
+    return sendError(res, 500, 'Failed to fetch resource workload.');
+  }
+}
+
+async function handleProjectWorkloadReport(req, res) {
+  try {
+    const { startDate, endDate } = parseDateRangeQuery(req);
+    const { project_id: projectId } = req.query;
+
+    if (!projectId) {
+      return sendError(res, 400, 'project_id is required.');
+    }
+
+    if (!mongoose.isValidObjectId(projectId)) {
+      return sendError(res, 400, 'Invalid project id.');
+    }
+
+    const projectExists = await Project.exists({ _id: projectId });
+
+    if (!projectExists) {
+      return sendError(res, 404, 'Project not found.');
+    }
+
+    const allocations = await Allocation.find({
+      project_id: projectId,
+      start_date: { $lte: endDate },
+      end_date: { $gte: startDate }
+    }).sort({ resource_id: 1, start_date: 1, end_date: 1, created_at: 1 });
+
+    const projectWorkload = aggregateProjectDailyWorkload(allocations, projectId, startDate, endDate);
+    return sendSuccess(res, 200, projectWorkload);
+  } catch (error) {
+    if (isDateRangeQueryError(error.message)) {
+      return sendError(res, 400, error.message);
+    }
+
+    return sendError(res, 500, 'Failed to fetch project workload.');
+  }
 }
 
 app.get('/health', (_req, res) => {
@@ -361,6 +422,10 @@ app.get('/api/allocations', async (_req, res) => {
   }
 });
 
+app.get('/reports/resource-workload', handleResourceWorkloadReport);
+app.get('/api/reports/resource-workload', handleResourceWorkloadReport);
+app.get('/reports/project-workload', handleProjectWorkloadReport);
+app.get('/api/reports/project-workload', handleProjectWorkloadReport);
 app.get('/reports/resource-workload', async (req, res) => {
   try {
     const { startDate, endDate } = parseDateRangeQuery(req);
