@@ -1,19 +1,26 @@
 import { expandDateRangeToWeekdays } from './weekdayRange.util.js'
 
+export const WORKLOAD_STATUS = {
+  EMPTY: 'empty',
+  PARTIAL: 'partial',
+  FULL: 'full',
+  OVERALLOCATED: 'overallocated'
+}
+
 export function getDailyWorkloadStatus(plannedHours) {
   if (plannedHours === 0) {
-    return 'empty'
+    return WORKLOAD_STATUS.EMPTY
   }
 
   if (plannedHours > 8) {
-    return 'overallocated'
+    return WORKLOAD_STATUS.OVERALLOCATED
   }
 
   if (plannedHours === 8) {
-    return 'full'
+    return WORKLOAD_STATUS.FULL
   }
 
-  return 'partial'
+  return WORKLOAD_STATUS.PARTIAL
 }
 
 export function normalizeUtcDate(dateInput) {

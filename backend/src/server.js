@@ -120,8 +120,14 @@ function parseDateRangeQuery(req) {
   return { startDate, endDate };
 }
 
+const DATE_RANGE_ERROR_MESSAGES = new Set([
+  'start_date and end_date are required.',
+  'start_date must be on or before end_date.',
+  'Invalid date input.'
+]);
+
 function isDateRangeQueryError(message) {
-  return message === 'start_date and end_date are required.' || message === 'start_date must be on or before end_date.' || message === 'Invalid date input.'
+  return DATE_RANGE_ERROR_MESSAGES.has(message);
 }
 
 async function handleResourceWorkloadReport(req, res) {

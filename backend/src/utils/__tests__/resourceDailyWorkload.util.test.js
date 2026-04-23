@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { aggregateResourceDailyWorkload, getDailyWorkloadStatus } from '../resourceDailyWorkload.util.js'
+import { aggregateResourceDailyWorkload, getDailyWorkloadStatus, WORKLOAD_STATUS } from '../resourceDailyWorkload.util.js'
 
 test('sums multiple allocations for the same resource on the same weekday', () => {
   const workload = aggregateResourceDailyWorkload(
@@ -103,11 +103,11 @@ test('groups output by resource and date with accurate totals', () => {
 })
 
 test('calculates workload status thresholds correctly', () => {
-  assert.equal(getDailyWorkloadStatus(0), 'empty')
-  assert.equal(getDailyWorkloadStatus(1), 'partial')
-  assert.equal(getDailyWorkloadStatus(7), 'partial')
-  assert.equal(getDailyWorkloadStatus(8), 'full')
-  assert.equal(getDailyWorkloadStatus(8.01), 'overallocated')
+  assert.equal(getDailyWorkloadStatus(0), WORKLOAD_STATUS.EMPTY)
+  assert.equal(getDailyWorkloadStatus(1), WORKLOAD_STATUS.PARTIAL)
+  assert.equal(getDailyWorkloadStatus(7), WORKLOAD_STATUS.PARTIAL)
+  assert.equal(getDailyWorkloadStatus(8), WORKLOAD_STATUS.FULL)
+  assert.equal(getDailyWorkloadStatus(8.01), WORKLOAD_STATUS.OVERALLOCATED)
 })
 
 test('adds full and overallocated status to resource-day output', () => {
