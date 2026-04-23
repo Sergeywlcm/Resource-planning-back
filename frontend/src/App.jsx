@@ -27,6 +27,10 @@ function toDateInputValue(rawValue) {
   return new Date(rawValue).toISOString().slice(0, 10);
 }
 
+function formatDateRange(startDate, endDate) {
+  return `${toDateInputValue(startDate)} → ${toDateInputValue(endDate)}`;
+}
+
 export default function App() {
   const [resources, setResources] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -551,36 +555,51 @@ export default function App() {
       {activeView === 'allocation-list' && (
         <section className="panel" aria-label="Allocation list">
           <h2>Allocation list</h2>
-          <p className="muted">Create and maintain allocation plans by resource, project, date range, and hours per day.</p>
+          <p className="muted">Review and manage existing allocations outside planning views.</p>
           {allocationFormSuccess && <p className="success">{allocationFormSuccess}</p>}
           {allocationFormError && <p className="error">{allocationFormError}</p>}
           {allocationError && <p className="error">{allocationError}</p>}
           {loadingAllocations && <p>Loading allocations...</p>}
 
           {!loadingAllocations && !allocationError && (
-            <ul className="project-list allocation-list">
-              {allocations.length === 0 && <li className="empty">No allocations found.</li>}
-              {allocations.map((allocation) => (
-                <li key={allocation.id}>
-                  <div>
-                    <p className="name">{resourceNameById[allocation.resource_id] ?? 'Unknown resource'}</p>
-                    <p className="muted">Project: {projectNameById[allocation.project_id] ?? 'Unknown project'}</p>
-                    <p className="muted">
-                      {toDateInputValue(allocation.start_date)} → {toDateInputValue(allocation.end_date)}
-                    </p>
-                    <p className="muted">{allocation.hours_per_day} hours/day</p>
-                  </div>
-                  <div className="form-actions">
-                    <button type="button" className="secondary" onClick={() => startEditAllocation(allocation)}>
-                      Edit
-                    </button>
-                    <button type="button" onClick={() => handleAllocationDelete(allocation.id)}>
-                      Delete
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <>
+              {allocations.length === 0 && <p className="empty">No allocations found.</p>}
+              {allocations.length > 0 && (
+                <div className="allocation-table-wrapper">
+                  <table className="allocation-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">Resource</th>
+                        <th scope="col">Project</th>
+                        <th scope="col">Date range</th>
+                        <th scope="col">Hours/day</th>
+                        <th scope="col">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {allocations.map((allocation) => (
+                        <tr key={allocation.id}>
+                          <td>{resourceNameById[allocation.resource_id] ?? 'Unknown resource'}</td>
+                          <td>{projectNameById[allocation.project_id] ?? 'Unknown project'}</td>
+                          <td>{formatDateRange(allocation.start_date, allocation.end_date)}</td>
+                          <td>{allocation.hours_per_day}</td>
+                          <td>
+                            <div className="form-actions">
+                              <button type="button" className="secondary" onClick={() => startEditAllocation(allocation)}>
+                                Edit
+                              </button>
+                              <button type="button" onClick={() => handleAllocationDelete(allocation.id)}>
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
           )}
         </section>
       )}

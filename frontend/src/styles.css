@@ -150,8 +150,37 @@ button.secondary.active {
   color: #b91c1c;
 }
 
-.allocation-list .muted {
+.allocation-table-wrapper {
+  overflow-x: auto;
+}
+
+.allocation-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.allocation-table th,
+.allocation-table td {
+  text-align: left;
+  padding: 0.65rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.allocation-table th {
+  background: #f8fafc;
   font-size: 0.92rem;
+  color: #334155;
+}
+
+.allocation-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.allocation-table td .form-actions {
+  justify-content: flex-start;
 }
 
 .error {
