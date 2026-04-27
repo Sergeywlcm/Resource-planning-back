@@ -1,5 +1,5 @@
 import { expandDateRangeToWeekdays } from './weekdayRange.util.js'
-import { normalizeUtcDate } from './resourceDailyWorkload.util.js'
+import { getDailyWorkloadStatus, normalizeUtcDate } from './resourceDailyWorkload.util.js'
 
 function getResourceId(allocation) {
   if (!allocation?.resource_id) {
@@ -95,7 +95,11 @@ export function aggregateProjectDailyWorkload(
     .map(([resource_id, workloadByDate]) => {
       const daily_workload = Array.from(workloadByDate.entries())
         .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
-        .map(([date, planned_hours]) => ({ date, planned_hours }))
+        .map(([date, planned_hours]) => ({
+          date,
+          planned_hours,
+          workload_status: getDailyWorkloadStatus(planned_hours)
+        }))
 
       const total_planned_hours = daily_workload.reduce((totalHours, entry) => totalHours + entry.planned_hours, 0)
 
