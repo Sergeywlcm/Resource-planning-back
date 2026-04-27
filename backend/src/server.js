@@ -131,7 +131,9 @@ async function handleResourceWorkloadReport(req, res) {
     const allocations = await Allocation.find({
       start_date: { $lte: endDate },
       end_date: { $gte: startDate }
-    }).sort({ resource_id: 1, start_date: 1, end_date: 1, created_at: 1 });
+    })
+      .populate({ path: 'project_id', select: 'name' })
+      .sort({ resource_id: 1, start_date: 1, end_date: 1, created_at: 1 });
 
     const workloadByResource = aggregateResourceDailyWorkload(allocations, startDate, endDate);
     return sendSuccess(res, 200, workloadByResource);
