@@ -37,18 +37,18 @@ test('includes all allocated resources for selected project with weekday daily h
     {
       resource_id: 'resource-a',
       daily_workload: [
-        { date: '2026-04-20', planned_hours: 4 },
-        { date: '2026-04-21', planned_hours: 4 },
-        { date: '2026-04-22', planned_hours: 4 }
+        { date: '2026-04-20', planned_hours: 4, workload_status: 'partial' },
+        { date: '2026-04-21', planned_hours: 4, workload_status: 'partial' },
+        { date: '2026-04-22', planned_hours: 4, workload_status: 'partial' }
       ],
       total_planned_hours: 12
     },
     {
       resource_id: 'resource-b',
       daily_workload: [
-        { date: '2026-04-21', planned_hours: 3 },
-        { date: '2026-04-22', planned_hours: 3 },
-        { date: '2026-04-23', planned_hours: 3 }
+        { date: '2026-04-21', planned_hours: 3, workload_status: 'partial' },
+        { date: '2026-04-22', planned_hours: 3, workload_status: 'partial' },
+        { date: '2026-04-23', planned_hours: 3, workload_status: 'partial' }
       ],
       total_planned_hours: 9
     }
@@ -113,9 +113,9 @@ test('aggregated values are accurate for overlapping allocations by same resourc
     {
       resource_id: 'resource-a',
       daily_workload: [
-        { date: '2026-04-20', planned_hours: 4 },
-        { date: '2026-04-21', planned_hours: 5.5 },
-        { date: '2026-04-22', planned_hours: 4 }
+        { date: '2026-04-20', planned_hours: 4, workload_status: 'partial' },
+        { date: '2026-04-21', planned_hours: 5.5, workload_status: 'partial' },
+        { date: '2026-04-22', planned_hours: 4, workload_status: 'partial' }
       ],
       total_planned_hours: 13.5
     }
@@ -126,4 +126,41 @@ test('aggregated values are accurate for overlapping allocations by same resourc
     { date: '2026-04-22', planned_hours: 4 }
   ])
   assert.equal(workload.total_planned_hours, 13.5)
+})
+
+test('marks 8h as full and above 8h as overallocated per resource-day', () => {
+  const workload = aggregateProjectDailyWorkload(
+    [
+      {
+        project_id: 'project-1',
+        resource_id: 'resource-a',
+        start_date: '2026-04-20',
+        end_date: '2026-04-20',
+        hours_per_day: 8
+      },
+      {
+        project_id: 'project-1',
+        resource_id: 'resource-b',
+        start_date: '2026-04-20',
+        end_date: '2026-04-20',
+        hours_per_day: 9
+      }
+    ],
+    'project-1',
+    '2026-04-20',
+    '2026-04-20'
+  )
+
+  assert.deepEqual(workload.resources, [
+    {
+      resource_id: 'resource-a',
+      daily_workload: [{ date: '2026-04-20', planned_hours: 8, workload_status: 'full' }],
+      total_planned_hours: 8
+    },
+    {
+      resource_id: 'resource-b',
+      daily_workload: [{ date: '2026-04-20', planned_hours: 9, workload_status: 'overallocated' }],
+      total_planned_hours: 9
+    }
+  ])
 })

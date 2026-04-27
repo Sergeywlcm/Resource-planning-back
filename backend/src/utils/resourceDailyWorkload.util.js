@@ -10,6 +10,24 @@ export function normalizeUtcDate(dateInput) {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()))
 }
 
+export function getDailyWorkloadStatus(hoursInput) {
+  const hours = Number(hoursInput)
+
+  if (!Number.isFinite(hours) || hours <= 0) {
+    return 'empty'
+  }
+
+  if (hours < 8) {
+    return 'partial'
+  }
+
+  if (hours === 8) {
+    return 'full'
+  }
+
+  return 'overallocated'
+}
+
 function getResourceId(allocation) {
   if (!allocation?.resource_id) {
     return null
@@ -77,6 +95,10 @@ export function aggregateResourceDailyWorkload(allocations, selectedStartDateInp
       resource_id,
       daily_workload: Array.from(workloadByDate.entries())
         .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
-        .map(([date, planned_hours]) => ({ date, planned_hours }))
+        .map(([date, planned_hours]) => ({
+          date,
+          planned_hours,
+          workload_status: getDailyWorkloadStatus(planned_hours)
+        }))
     }))
 }
