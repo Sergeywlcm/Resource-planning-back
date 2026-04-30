@@ -10,6 +10,7 @@ import { Project } from './models/project.model.js';
 import { Resource } from './models/resource.model.js';
 import { aggregateProjectDailyWorkload } from './utils/projectDailyWorkload.util.js';
 import { aggregateResourceDailyWorkload, normalizeUtcDate } from './utils/resourceDailyWorkload.util.js';
+import { buildResourceWorkloadReport } from './utils/resourceWorkloadReport.util.js';
 
 dotenv.config();
 
@@ -103,25 +104,33 @@ function handleAllocationWriteError(error, res, actionLabel) {
   return sendError(res, 500, `Failed to ${actionLabel} allocation.`);
 }
 
-function parseDateRangeQuery(req) {
-  const { start_date: startDateRaw, end_date: endDateRaw } = req.query;
+function parseDateRangeQuery(req, options = {}) {
+  const {
+    startKey = 'start_date',
+    endKey = 'end_date',
+    missingMessage = `${startKey} and ${endKey} are required.`,
+    orderMessage = `${startKey} must be on or before ${endKey}.`
+  } = options;
+
+  const startDateRaw = req.query[startKey];
+  const endDateRaw = req.query[endKey];
 
   if (!startDateRaw || !endDateRaw) {
-    throw new Error('start_date and end_date are required.');
+    throw new Error(missingMessage);
   }
 
   const startDate = normalizeUtcDate(startDateRaw);
   const endDate = normalizeUtcDate(endDateRaw);
 
   if (startDate > endDate) {
-    throw new Error('start_date must be on or before end_date.');
+    throw new Error(orderMessage);
   }
 
   return { startDate, endDate };
 }
 
 function isDateRangeQueryError(message) {
-  return message === 'start_date and end_date are required.' || message === 'start_date must be on or before end_date.' || message === 'Invalid date input.'
+  return message.includes('are required.') || message.includes('must be on or before') || message === 'Invalid date input.';
 }
 
 async function handleResourceWorkloadReport(req, res) {
@@ -143,6 +152,38 @@ async function handleResourceWorkloadReport(req, res) {
     }
 
     return sendError(res, 500, 'Failed to fetch resource workload.');
+  }
+}
+
+
+
+async function handleResourcesWorkload(req, res) {
+  try {
+    const { startDate, endDate } = parseDateRangeQuery(req, {
+      startKey: 'start',
+      endKey: 'end',
+      missingMessage: 'start and end are required.',
+      orderMessage: 'start must be on or before end.'
+    });
+
+    const [resources, allocations] = await Promise.all([
+      Resource.find().sort({ name: 1, created_at: 1 }),
+      Allocation.find({
+        start_date: { $lte: endDate },
+        end_date: { $gte: startDate }
+      })
+        .populate({ path: 'project_id', select: 'name' })
+        .sort({ resource_id: 1, start_date: 1, end_date: 1, created_at: 1 })
+    ]);
+
+    const report = buildResourceWorkloadReport(resources, allocations, startDate, endDate);
+    return sendSuccess(res, 200, report);
+  } catch (error) {
+    if (isDateRangeQueryError(error.message)) {
+      return sendError(res, 400, error.message);
+    }
+
+    return sendError(res, 500, 'Failed to fetch resources workload.');
   }
 }
 
@@ -426,6 +467,8 @@ app.get('/api/allocations', async (_req, res) => {
 
 app.get('/reports/resource-workload', handleResourceWorkloadReport);
 app.get('/api/reports/resource-workload', handleResourceWorkloadReport);
+app.get('/resources/workload', handleResourcesWorkload);
+app.get('/api/resources/workload', handleResourcesWorkload);
 app.get('/reports/project-workload', handleProjectWorkloadReport);
 app.get('/api/reports/project-workload', handleProjectWorkloadReport);
 app.get('/reports/resource-workload', async (req, res) => {
