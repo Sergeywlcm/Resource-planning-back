@@ -11,6 +11,7 @@ import { Resource } from './models/resource.model.js';
 import { aggregateProjectDailyWorkload } from './utils/projectDailyWorkload.util.js';
 import { aggregateResourceDailyWorkload, normalizeUtcDate } from './utils/resourceDailyWorkload.util.js';
 import { buildResourceWorkloadReport } from './utils/resourceWorkloadReport.util.js';
+import { expandDateRangeToWeekdays } from './utils/weekdayRange.util.js';
 
 dotenv.config();
 
