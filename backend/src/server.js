@@ -11,6 +11,7 @@ import { Resource } from './models/resource.model.js';
 import { aggregateProjectDailyWorkload } from './utils/projectDailyWorkload.util.js';
 import { aggregateResourceDailyWorkload, normalizeUtcDate } from './utils/resourceDailyWorkload.util.js';
 import { buildResourceWorkloadReport } from './utils/resourceWorkloadReport.util.js';
+import { expandDateRangeToWeekdays } from './utils/weekdayRange.util.js';
 
 dotenv.config();
 
@@ -184,6 +185,70 @@ async function handleResourcesWorkload(req, res) {
     }
 
     return sendError(res, 500, 'Failed to fetch resources workload.');
+  }
+}
+
+
+async function handleProjectWorkloadById(req, res) {
+  try {
+    const { startDate, endDate } = parseDateRangeQuery(req, {
+      startKey: 'start',
+      endKey: 'end',
+      missingMessage: 'start and end are required.',
+      orderMessage: 'start must be on or before end.'
+    });
+    const { id: projectId } = req.params;
+
+    if (!mongoose.isValidObjectId(projectId)) {
+      return sendError(res, 400, 'Invalid project id.');
+    }
+
+    const projectExists = await Project.exists({ _id: projectId });
+
+    if (!projectExists) {
+      return sendError(res, 404, 'Project not found.');
+    }
+
+    const allocations = await Allocation.find({
+      project_id: projectId,
+      start_date: { $lte: endDate },
+      end_date: { $gte: startDate }
+    })
+      .populate({ path: 'resource_id', select: 'name' })
+      .sort({ resource_id: 1, start_date: 1, end_date: 1, created_at: 1 });
+
+    const aggregated = aggregateProjectDailyWorkload(allocations, projectId, startDate, endDate);
+
+    const resources = aggregated.resources.map((resource) => {
+      const allocationWithResource = allocations.find((allocation) => {
+        const allocationResourceId = typeof allocation.resource_id === 'string'
+          ? allocation.resource_id
+          : allocation.resource_id?._id?.toString?.() ?? allocation.resource_id?.toString?.();
+
+        return allocationResourceId === resource.resource_id;
+      });
+
+      return {
+        ...resource,
+        resource_name: allocationWithResource?.resource_id?.name ?? null
+      };
+    });
+
+    return sendSuccess(res, 200, {
+      project_id: aggregated.project_id,
+      start_date: startDate.toISOString().slice(0, 10),
+      end_date: endDate.toISOString().slice(0, 10),
+      weekdays: expandDateRangeToWeekdays(startDate, endDate),
+      resources,
+      daily_totals: aggregated.daily_totals,
+      total_planned_hours: aggregated.total_planned_hours
+    });
+  } catch (error) {
+    if (isDateRangeQueryError(error.message)) {
+      return sendError(res, 400, error.message);
+    }
+
+    return sendError(res, 500, 'Failed to fetch project workload.');
   }
 }
 
@@ -471,6 +536,8 @@ app.get('/resources/workload', handleResourcesWorkload);
 app.get('/api/resources/workload', handleResourcesWorkload);
 app.get('/reports/project-workload', handleProjectWorkloadReport);
 app.get('/api/reports/project-workload', handleProjectWorkloadReport);
+app.get('/projects/:id/workload', handleProjectWorkloadById);
+app.get('/api/projects/:id/workload', handleProjectWorkloadById);
 app.get('/reports/resource-workload', async (req, res) => {
   try {
     const { startDate, endDate } = parseDateRangeQuery(req);
