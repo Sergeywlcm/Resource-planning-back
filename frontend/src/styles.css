@@ -197,3 +197,52 @@ button.secondary.active {
   padding: 0.2rem;
   color: #475569;
 }
+
+.resource-range-form {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 220px));
+  margin: 1rem 0;
+}
+
+.resource-range-form label {
+  display: grid;
+  gap: 0.3rem;
+  font-weight: 600;
+}
+
+.resource-grid-wrapper {
+  overflow: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.resource-grid {
+  border-collapse: collapse;
+  width: max-content;
+  min-width: 100%;
+}
+
+.resource-grid th,
+.resource-grid td {
+  border-bottom: 1px solid #e2e8f0;
+  border-right: 1px solid #e2e8f0;
+  padding: 0.6rem;
+  min-width: 120px;
+  text-align: center;
+}
+
+.resource-grid thead th {
+  background: #f8fafc;
+  font-size: 0.9rem;
+  color: #334155;
+}
+
+.resource-grid tbody th {
+  position: sticky;
+  left: 0;
+  background: #fff;
+  text-align: left;
+  min-width: 180px;
+  z-index: 1;
+}
