@@ -31,6 +31,49 @@ function formatDateRange(startDate, endDate) {
   return `${toDateInputValue(startDate)} → ${toDateInputValue(endDate)}`;
 }
 
+function getDefaultRange() {
+  const start = new Date();
+  const end = new Date(start);
+  end.setDate(start.getDate() + 13);
+
+  return {
+    startDate: toDateInputValue(start),
+    endDate: toDateInputValue(end)
+  };
+}
+
+function isWeekday(date) {
+  const day = date.getDay();
+  return day !== 0 && day !== 6;
+}
+
+function getWeekdaysInRange(startDate, endDate) {
+  if (!startDate || !endDate || endDate < startDate) {
+    return [];
+  }
+
+  const days = [];
+  const cursor = new Date(startDate);
+  const rangeEnd = new Date(endDate);
+
+  while (cursor <= rangeEnd) {
+    if (isWeekday(cursor)) {
+      days.push({
+        key: cursor.toISOString(),
+        date: toDateInputValue(cursor),
+        label: cursor.toLocaleDateString(undefined, {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric'
+        })
+      });
+    }
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return days;
+}
+
 export default function App() {
   const [resources, setResources] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -57,6 +100,7 @@ export default function App() {
   const [allocationFormSuccess, setAllocationFormSuccess] = useState('');
 
   const [activeView, setActiveView] = useState('project-list');
+  const [resourceViewRange, setResourceViewRange] = useState(getDefaultRange);
 
   const isProjectEditMode = useMemo(() => Boolean(editingProjectId), [editingProjectId]);
   const isAllocationEditMode = useMemo(() => Boolean(editingAllocationId), [editingAllocationId]);
@@ -352,6 +396,10 @@ export default function App() {
 
   const isProjectFormView = activeView === 'project-create' || activeView === 'project-edit';
   const isAllocationFormView = activeView === 'allocation-create' || activeView === 'allocation-edit';
+  const weekdayColumns = useMemo(
+    () => getWeekdaysInRange(resourceViewRange.startDate, resourceViewRange.endDate),
+    [resourceViewRange.endDate, resourceViewRange.startDate]
+  );
 
   return (
     <main className="app">
@@ -388,6 +436,13 @@ export default function App() {
           onClick={startCreateAllocation}
         >
           Create allocation
+        </button>
+        <button
+          type="button"
+          className={activeView === 'resource-view' ? 'secondary active' : 'secondary'}
+          onClick={() => setActiveView('resource-view')}
+        >
+          Resource view
         </button>
       </nav>
 
@@ -600,6 +655,67 @@ export default function App() {
                 </div>
               )}
             </>
+          )}
+        </section>
+      )}
+
+      {activeView === 'resource-view' && (
+        <section className="panel" aria-label="Resource View">
+          <h2>Resource View</h2>
+          <p className="muted">Plan work by resource across weekday columns only.</p>
+          <form className="resource-range-form" onSubmit={(event) => event.preventDefault()}>
+            <label>
+              Start date
+              <input
+                type="date"
+                value={resourceViewRange.startDate}
+                onChange={(event) =>
+                  setResourceViewRange((current) => ({ ...current, startDate: event.target.value }))
+                }
+              />
+            </label>
+            <label>
+              End date
+              <input
+                type="date"
+                value={resourceViewRange.endDate}
+                onChange={(event) =>
+                  setResourceViewRange((current) => ({ ...current, endDate: event.target.value }))
+                }
+              />
+            </label>
+          </form>
+          {resourceError && <p className="error">{resourceError}</p>}
+          {loadingResources && <p>Loading resources...</p>}
+          {!loadingResources && !resourceError && (
+            <div className="resource-grid-wrapper">
+              {weekdayColumns.length === 0 ? (
+                <p className="empty">No weekdays found in this date range.</p>
+              ) : (
+                <table className="resource-grid">
+                  <thead>
+                    <tr>
+                      <th scope="col">Resource</th>
+                      {weekdayColumns.map((column) => (
+                        <th scope="col" key={column.key}>
+                          {column.label}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {resources.map((resource) => (
+                      <tr key={resource.id}>
+                        <th scope="row">{resource.name}</th>
+                        {weekdayColumns.map((column) => (
+                          <td key={`${resource.id}-${column.date}`} aria-label={`${resource.name} ${column.label}`} />
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
           )}
         </section>
       )}
