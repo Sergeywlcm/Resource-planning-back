@@ -101,6 +101,9 @@ export default function App() {
 
   const [activeView, setActiveView] = useState('project-list');
   const [resourceViewRange, setResourceViewRange] = useState(getDefaultRange);
+  const [resourceViewData, setResourceViewData] = useState({ resources: [] });
+  const [isLoadingResourceView, setIsLoadingResourceView] = useState(false);
+  const [resourceViewError, setResourceViewError] = useState('');
 
   const isProjectEditMode = useMemo(() => Boolean(editingProjectId), [editingProjectId]);
   const isAllocationEditMode = useMemo(() => Boolean(editingAllocationId), [editingAllocationId]);
@@ -178,6 +181,39 @@ export default function App() {
       setLoadingAllocations(false);
     }
   }
+
+  async function loadResourceView() {
+    const { startDate, endDate } = resourceViewRange;
+
+    if (!startDate || !endDate || new Date(endDate) < new Date(startDate)) {
+      setResourceViewData({ resources: [] });
+      return;
+    }
+
+    setIsLoadingResourceView(true);
+    setResourceViewError('');
+
+    try {
+      const params = new URLSearchParams({ start: startDate, end: endDate });
+      const response = await fetch(`${apiBaseUrl}/resources/workload?${params.toString()}`);
+      const payload = await response.json();
+
+      if (!response.ok || !payload?.data || !Array.isArray(payload.data.resources)) {
+        throw new Error(payload?.error?.message ?? 'Unable to load resource view workload.');
+      }
+
+      setResourceViewData(payload.data);
+    } catch (error) {
+      setResourceViewError(error.message);
+      setResourceViewData({ resources: [] });
+    } finally {
+      setIsLoadingResourceView(false);
+    }
+  }
+
+  useEffect(() => {
+    loadResourceView();
+  }, [resourceViewRange.endDate, resourceViewRange.startDate]);
 
   useEffect(() => {
     loadResources();
@@ -400,6 +436,16 @@ export default function App() {
     () => getWeekdaysInRange(resourceViewRange.startDate, resourceViewRange.endDate),
     [resourceViewRange.endDate, resourceViewRange.startDate]
   );
+
+  const resourceDailyHoursById = useMemo(() => {
+    return resourceViewData.resources.reduce((resourceAcc, resource) => {
+      resourceAcc[resource.resource_id] = resource.daily_workload.reduce((dayAcc, day) => {
+        dayAcc[day.date] = day.planned_hours;
+        return dayAcc;
+      }, {});
+      return resourceAcc;
+    }, {});
+  }, [resourceViewData.resources]);
 
   return (
     <main className="app">
@@ -686,8 +732,9 @@ export default function App() {
             </label>
           </form>
           {resourceError && <p className="error">{resourceError}</p>}
-          {loadingResources && <p>Loading resources...</p>}
-          {!loadingResources && !resourceError && (
+          {resourceViewError && <p className="error">{resourceViewError}</p>}
+          {(loadingResources || isLoadingResourceView) && <p>Loading resources...</p>}
+          {!loadingResources && !isLoadingResourceView && !resourceError && !resourceViewError && (
             <div className="resource-grid-wrapper">
               {weekdayColumns.length === 0 ? (
                 <p className="empty">No weekdays found in this date range.</p>
@@ -707,9 +754,15 @@ export default function App() {
                     {resources.map((resource) => (
                       <tr key={resource.id}>
                         <th scope="row">{resource.name}</th>
-                        {weekdayColumns.map((column) => (
-                          <td key={`${resource.id}-${column.date}`} aria-label={`${resource.name} ${column.label}`} />
-                        ))}
+                        {weekdayColumns.map((column) => {
+                          const plannedHours = resourceDailyHoursById[resource.id]?.[column.date] ?? 0;
+
+                          return (
+                            <td key={`${resource.id}-${column.date}`} aria-label={`${resource.name} ${column.label}`}>
+                              {plannedHours > 0 ? `${plannedHours}h` : '0h'}
+                            </td>
+                          );
+                        })}
                       </tr>
                     ))}
                   </tbody>
