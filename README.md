@@ -42,8 +42,15 @@ Available endpoints:
 
 - `GET /health` → service + database status (returns `200` when DB is connected, `503` otherwise)
 - `GET /api/ping` → `{ "message": "Backend is reachable" }`
+- `GET /resources` → list all resources
+- `GET /resources/:id` → get resource by id
+- `POST /resources` → create resource (`name` required, `capacity_hours` default `8`, `is_active` default `true`)
+- `PUT /resources/:id` → update an existing resource
+- `GET /api/resources` → list all resources (API namespace alias)
+- `GET /api/resources/:id` → get resource by id (API namespace alias)
 - `POST /api/resources` → create resource (`name` required, `capacity_hours` default `8`, `is_active` default `true`)
-- `PATCH /api/resources/:id` → update an existing resource
+- `PUT /api/resources/:id` → update an existing resource (API namespace alias)
+- `PATCH /api/resources/:id` → partially update an existing resource
 - `GET /projects` → list all projects
 - `GET /projects/:id` → get project by id
 - `POST /projects` → create project (`name` required, `is_active` default `true`)
@@ -81,6 +88,9 @@ Frontend starts on `http://localhost:5173` and calls backend using `VITE_API_BAS
 - `CORS_ORIGIN` - allowed frontend origin (default `http://localhost:5173`)
 - `MONGO_URI` - MongoDB connection URI (required, e.g. `mongodb://127.0.0.1:27017`)
 - `MONGO_DB_NAME` - logical database name used by this service (default `resource_planning`)
+- `SESSION_SECRET` - secret used to sign session tokens
+- `INITIAL_ADMIN_EMAIL` - email for the first seeded Admin user
+- `INITIAL_ADMIN_PASSWORD` - optional first Admin password; if omitted, startup prints a one-time setup URL
 
 ### Frontend (`frontend/.env`)
 

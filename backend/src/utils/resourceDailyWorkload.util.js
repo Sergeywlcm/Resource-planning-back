@@ -37,6 +37,10 @@ function getResourceId(allocation) {
     return allocation.resource_id
   }
 
+  if (typeof allocation.resource_id._id?.toString === 'function') {
+    return allocation.resource_id._id.toString()
+  }
+
   if (typeof allocation.resource_id.toString === 'function') {
     return allocation.resource_id.toString()
   }
@@ -51,6 +55,8 @@ function getProjectBreakdownEntry(allocation) {
 
   const projectId = typeof allocation.project_id === 'string'
     ? allocation.project_id
+    : typeof allocation.project_id._id?.toString === 'function'
+      ? allocation.project_id._id.toString()
     : typeof allocation.project_id.toString === 'function'
       ? allocation.project_id.toString()
       : null
@@ -62,8 +68,14 @@ function getProjectBreakdownEntry(allocation) {
   const projectName = typeof allocation.project_id === 'object' && allocation.project_id !== null
     ? allocation.project_id.name ?? null
     : null
+  const projectColor = typeof allocation.project_id === 'object' && allocation.project_id !== null
+    ? allocation.project_id.color ?? null
+    : null
+  const projectHoursType = typeof allocation.project_id === 'object' && allocation.project_id !== null
+    ? allocation.project_id.hours_type ?? null
+    : null
 
-  return { projectId, projectName }
+  return { projectId, projectName, projectColor, projectHoursType }
 }
 
 export function aggregateResourceDailyWorkload(allocations, selectedStartDateInput, selectedEndDateInput) {
@@ -123,11 +135,21 @@ export function aggregateResourceDailyWorkload(allocations, selectedStartDateInp
       entry.plannedHours += hoursPerDay
 
       if (!entry.projectHours.has(projectEntry.projectId)) {
-        entry.projectHours.set(projectEntry.projectId, {
+        const breakdownEntry = {
           project_id: projectEntry.projectId,
           project_name: projectEntry.projectName,
           hours: 0
-        })
+        }
+
+        if (projectEntry.projectColor) {
+          breakdownEntry.project_color = projectEntry.projectColor
+        }
+
+        if (projectEntry.projectHoursType) {
+          breakdownEntry.project_hours_type = projectEntry.projectHoursType
+        }
+
+        entry.projectHours.set(projectEntry.projectId, breakdownEntry)
       }
 
       const breakdownEntry = entry.projectHours.get(projectEntry.projectId)
@@ -135,6 +157,14 @@ export function aggregateResourceDailyWorkload(allocations, selectedStartDateInp
 
       if (!breakdownEntry.project_name && projectEntry.projectName) {
         breakdownEntry.project_name = projectEntry.projectName
+      }
+
+      if (!breakdownEntry.project_color && projectEntry.projectColor) {
+        breakdownEntry.project_color = projectEntry.projectColor
+      }
+
+      if (!breakdownEntry.project_hours_type && projectEntry.projectHoursType) {
+        breakdownEntry.project_hours_type = projectEntry.projectHoursType
       }
     }
   }

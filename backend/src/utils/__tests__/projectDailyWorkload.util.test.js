@@ -164,3 +164,28 @@ test('marks 8h as full and above 8h as overallocated per resource-day', () => {
     }
   ])
 })
+
+test('reads resource ids from lean populated resource objects', () => {
+  const workload = aggregateProjectDailyWorkload(
+    [
+      {
+        project_id: 'project-1',
+        resource_id: { _id: { toString: () => 'resource-a' }, name: 'Alice' },
+        start_date: '2026-04-20',
+        end_date: '2026-04-20',
+        hours_per_day: 6
+      }
+    ],
+    'project-1',
+    '2026-04-20',
+    '2026-04-20'
+  )
+
+  assert.deepEqual(workload.resources, [
+    {
+      resource_id: 'resource-a',
+      daily_workload: [{ date: '2026-04-20', planned_hours: 6, workload_status: 'partial' }],
+      total_planned_hours: 6
+    }
+  ])
+})

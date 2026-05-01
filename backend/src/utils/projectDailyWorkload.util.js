@@ -10,6 +10,10 @@ function getResourceId(allocation) {
     return allocation.resource_id
   }
 
+  if (typeof allocation.resource_id._id?.toString === 'function') {
+    return allocation.resource_id._id.toString()
+  }
+
   if (typeof allocation.resource_id.toString === 'function') {
     return allocation.resource_id.toString()
   }
@@ -24,6 +28,10 @@ function getProjectId(allocation) {
 
   if (typeof allocation.project_id === 'string') {
     return allocation.project_id
+  }
+
+  if (typeof allocation.project_id._id?.toString === 'function') {
+    return allocation.project_id._id.toString()
   }
 
   if (typeof allocation.project_id.toString === 'function') {

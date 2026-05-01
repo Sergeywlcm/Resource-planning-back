@@ -11,6 +11,17 @@ const projectSchema = new mongoose.Schema(
     is_active: {
       type: Boolean,
       default: true
+    },
+    color: {
+      type: String,
+      default: '#346a55',
+      match: /^#[0-9a-fA-F]{6}$/
+    },
+    hours_type: {
+      type: String,
+      enum: ['BILLABLE', 'NON_BILLABLE'],
+      default: 'BILLABLE',
+      required: true
     }
   },
   {

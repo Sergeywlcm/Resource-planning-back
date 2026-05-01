@@ -84,3 +84,29 @@ test('aggregates overlapping allocations with statuses and project breakdown', (
     }
   ])
 })
+
+test('reads project ids from lean populated project objects', () => {
+  const report = buildResourceWorkloadReport(
+    [{ _id: { toString: () => 'resource-1' }, name: 'Alice', capacity_hours: 8 }],
+    [
+      {
+        resource_id: 'resource-1',
+        project_id: { _id: { toString: () => 'project-1' }, name: 'Atlas' },
+        start_date: '2026-04-20',
+        end_date: '2026-04-20',
+        hours_per_day: 5
+      }
+    ],
+    '2026-04-20',
+    '2026-04-20'
+  )
+
+  assert.deepEqual(report.resources[0].daily_workload, [
+    {
+      date: '2026-04-20',
+      planned_hours: 5,
+      workload_status: 'partial',
+      project_breakdown: [{ project_id: 'project-1', project_name: 'Atlas', hours: 5 }]
+    }
+  ])
+})

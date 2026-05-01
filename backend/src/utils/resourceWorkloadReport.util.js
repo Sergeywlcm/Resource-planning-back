@@ -30,6 +30,10 @@ function getAllocationResourceId(allocation) {
     return allocation.resource_id
   }
 
+  if (typeof allocation.resource_id._id?.toString === 'function') {
+    return allocation.resource_id._id.toString()
+  }
+
   if (typeof allocation.resource_id.toString === 'function') {
     return allocation.resource_id.toString()
   }
@@ -44,6 +48,8 @@ function getProjectBreakdownEntry(allocation) {
 
   const projectId = typeof allocation.project_id === 'string'
     ? allocation.project_id
+    : typeof allocation.project_id._id?.toString === 'function'
+      ? allocation.project_id._id.toString()
     : typeof allocation.project_id.toString === 'function'
       ? allocation.project_id.toString()
       : null
@@ -55,8 +61,14 @@ function getProjectBreakdownEntry(allocation) {
   const projectName = typeof allocation.project_id === 'object' && allocation.project_id !== null
     ? allocation.project_id.name ?? null
     : null
+  const projectColor = typeof allocation.project_id === 'object' && allocation.project_id !== null
+    ? allocation.project_id.color ?? null
+    : null
+  const projectHoursType = typeof allocation.project_id === 'object' && allocation.project_id !== null
+    ? allocation.project_id.hours_type ?? null
+    : null
 
-  return { projectId, projectName }
+  return { projectId, projectName, projectColor, projectHoursType }
 }
 
 export function buildResourceWorkloadReport(resources, allocations, selectedStartDateInput, selectedEndDateInput) {
@@ -150,12 +162,30 @@ export function buildResourceWorkloadReport(resources, allocations, selectedStar
         if (!existingProject.project_name && projectEntry.projectName) {
           existingProject.project_name = projectEntry.projectName
         }
+
+        if (!existingProject.project_color && projectEntry.projectColor) {
+          existingProject.project_color = projectEntry.projectColor
+        }
+
+        if (!existingProject.project_hours_type && projectEntry.projectHoursType) {
+          existingProject.project_hours_type = projectEntry.projectHoursType
+        }
       } else {
-        day.project_breakdown.push({
+        const breakdownEntry = {
           project_id: projectEntry.projectId,
           project_name: projectEntry.projectName,
           hours: hoursPerDay
-        })
+        }
+
+        if (projectEntry.projectColor) {
+          breakdownEntry.project_color = projectEntry.projectColor
+        }
+
+        if (projectEntry.projectHoursType) {
+          breakdownEntry.project_hours_type = projectEntry.projectHoursType
+        }
+
+        day.project_breakdown.push(breakdownEntry)
       }
     }
   }
