@@ -711,6 +711,66 @@ app.get('/api/auth/me', (req, res) => {
   return sendSuccess(res, 200, serializeUser(req.user));
 });
 
+app.post('/auth/change-password', async (req, res) => {
+  const currentPassword = req.body?.current_password;
+  const newPassword = req.body?.new_password;
+  const confirmPassword = req.body?.confirm_password;
+  const passwordError = validatePassword(newPassword);
+
+  if (passwordError) {
+    return sendError(res, 400, passwordError);
+  }
+
+  if (newPassword !== confirmPassword) {
+    return sendError(res, 400, 'Password confirmation must match.');
+  }
+
+  try {
+    const user = await User.findById(req.user._id).select('+password_hash');
+
+    if (!user || user.status !== USER_STATUSES.ACTIVE || !user.password_hash) {
+      await writeAuditLog(req, {
+        actorUserId: req.user._id,
+        action: 'PASSWORD_CHANGE_FAILED',
+        targetUserId: req.user._id,
+        result: 'FAILURE'
+      });
+      return sendError(res, 400, 'Unable to change password.');
+    }
+
+    const currentPasswordMatches = await verifyPassword(currentPassword, user.password_hash);
+
+    if (!currentPasswordMatches) {
+      await writeAuditLog(req, {
+        actorUserId: user._id,
+        action: 'PASSWORD_CHANGE_FAILED',
+        targetUserId: user._id,
+        metadata: { reason: 'invalid_current_password' },
+        result: 'FAILURE'
+      });
+      return sendError(res, 400, 'Unable to change password.');
+    }
+
+    user.password_hash = await hashPassword(newPassword);
+    await user.save();
+
+    await writeAuditLog(req, {
+      actorUserId: user._id,
+      action: 'PASSWORD_CHANGED',
+      targetUserId: user._id
+    });
+
+    return sendSuccess(res, 200, serializeUser(user));
+  } catch (_error) {
+    return sendError(res, 500, 'Unable to change password.');
+  }
+});
+
+app.post('/api/auth/change-password', (req, res, next) => {
+  req.url = '/auth/change-password';
+  app.handle(req, res, next);
+});
+
 app.get('/users', async (_req, res) => {
   try {
     const users = await User.find().sort({ created_at: 1 });

@@ -164,6 +164,37 @@ h2 {
   margin-bottom: 0.85rem;
 }
 
+.profile-details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.profile-details-grid > div {
+  border: 1px solid var(--wlcm-line);
+  border-radius: 8px;
+  background: #fffdf9;
+  padding: 0.85rem;
+}
+
+.profile-detail-label {
+  color: var(--wlcm-muted);
+  font-size: 0.86rem;
+  font-weight: 650;
+}
+
+.profile-detail-value {
+  margin-top: 0.25rem;
+  color: var(--wlcm-green-dark);
+  font-weight: 750;
+  overflow-wrap: anywhere;
+}
+
+.profile-password-form {
+  max-width: 520px;
+}
+
 .invite-url {
   margin-top: 0.6rem;
   border: 1px solid #b9d2c5;

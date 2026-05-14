@@ -158,6 +158,14 @@ export default function App() {
   const [passwordSetupFormData, setPasswordSetupFormData] = useState({ password: '', confirm_password: '' });
   const [passwordSetupError, setPasswordSetupError] = useState('');
   const [isSettingPassword, setIsSettingPassword] = useState(false);
+  const [profilePasswordData, setProfilePasswordData] = useState({
+    current_password: '',
+    new_password: '',
+    confirm_password: ''
+  });
+  const [profileFormError, setProfileFormError] = useState('');
+  const [profileFormSuccess, setProfileFormSuccess] = useState('');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   const [resources, setResources] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -842,6 +850,58 @@ export default function App() {
     }
   }
 
+  function handleProfilePasswordChange(event) {
+    const { name, value } = event.target;
+
+    setProfilePasswordData((current) => ({
+      ...current,
+      [name]: value
+    }));
+  }
+
+  async function handleProfilePasswordSubmit(event) {
+    event.preventDefault();
+    setProfileFormError('');
+    setProfileFormSuccess('');
+
+    if (profilePasswordData.new_password.length < 12) {
+      setProfileFormError('Password must be at least 12 characters.');
+      return;
+    }
+
+    if (profilePasswordData.new_password !== profilePasswordData.confirm_password) {
+      setProfileFormError('Password confirmation must match.');
+      return;
+    }
+
+    setIsChangingPassword(true);
+
+    try {
+      const response = await apiFetch(`${apiBaseUrl}/auth/change-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profilePasswordData)
+      });
+      const payload = await response.json();
+
+      if (!response.ok || !payload?.data) {
+        throw new Error(payload?.error?.message ?? 'Unable to change password.');
+      }
+
+      setCurrentUser(payload.data);
+      setProfilePasswordData({
+        current_password: '',
+        new_password: '',
+        confirm_password: ''
+      });
+      setProfileFormSuccess('Password changed successfully.');
+    } catch (error) {
+      setProfileFormError(error.message);
+    } finally {
+      setIsChangingPassword(false);
+    }
+  }
+
   async function handleUserSubmit(event) {
     event.preventDefault();
     setUserFormError('');
@@ -1190,6 +1250,9 @@ export default function App() {
         </div>
         <div className="session-summary">
           <span>{currentUser?.email ?? 'Admin'}</span>
+          <button type="button" className="secondary" onClick={() => setActiveView('profile')}>
+            Profile
+          </button>
           <button type="button" className="secondary" onClick={handleLogout}>
             Logout
           </button>
@@ -1240,6 +1303,81 @@ export default function App() {
           Users
         </button>
       </nav>
+
+      {activeView === 'profile' && (
+        <section className="panel" aria-label="Profile details">
+          <div className="section-header">
+            <div>
+              <h2>Profile details</h2>
+              <p className="muted">Review your account details and update your password.</p>
+            </div>
+          </div>
+
+          <div className="profile-details-grid">
+            <div>
+              <p className="profile-detail-label">Email</p>
+              <p className="profile-detail-value">{currentUser?.email ?? '-'}</p>
+            </div>
+            <div>
+              <p className="profile-detail-label">Role</p>
+              <p className="profile-detail-value">{currentUser?.role ?? '-'}</p>
+            </div>
+            <div>
+              <p className="profile-detail-label">Status</p>
+              <p className="profile-detail-value">{currentUser?.status ?? '-'}</p>
+            </div>
+            <div>
+              <p className="profile-detail-label">Last login</p>
+              <p className="profile-detail-value">
+                {currentUser?.last_login_at ? new Date(currentUser.last_login_at).toLocaleString() : '-'}
+              </p>
+            </div>
+          </div>
+
+          <form className="project-form profile-password-form" onSubmit={handleProfilePasswordSubmit} noValidate>
+            <label>
+              Current password
+              <input
+                type="password"
+                name="current_password"
+                value={profilePasswordData.current_password}
+                onChange={handleProfilePasswordChange}
+                required
+              />
+            </label>
+            <label>
+              New password
+              <input
+                type="password"
+                name="new_password"
+                value={profilePasswordData.new_password}
+                onChange={handleProfilePasswordChange}
+                minLength={12}
+                required
+              />
+            </label>
+            <label>
+              Confirm new password
+              <input
+                type="password"
+                name="confirm_password"
+                value={profilePasswordData.confirm_password}
+                onChange={handleProfilePasswordChange}
+                minLength={12}
+                required
+              />
+            </label>
+            <div className="form-actions">
+              <button type="submit" disabled={isChangingPassword}>
+                {isChangingPassword ? 'Saving...' : 'Change password'}
+              </button>
+            </div>
+          </form>
+
+          {profileFormError && <p className="error">{profileFormError}</p>}
+          {profileFormSuccess && <p className="success">{profileFormSuccess}</p>}
+        </section>
+      )}
 
       {activeView === 'users' && (
         <section className="panel" aria-label="Users">
