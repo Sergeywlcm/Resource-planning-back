@@ -41,6 +41,7 @@ export function aggregateProjectDailyWorkload(
 ) {
   const selectedStartDate = normalizeUtcDate(selectedStartDateInput)
   const selectedEndDate = normalizeUtcDate(selectedEndDateInput)
+  const normalizedSelectedProjectId = String(selectedProjectId).toLowerCase()
 
   if (selectedStartDate > selectedEndDate) {
     throw new Error('start_date must be on or before end_date.')
@@ -52,7 +53,7 @@ export function aggregateProjectDailyWorkload(
   for (const allocation of allocations) {
     const projectId = getProjectId(allocation)
 
-    if (projectId !== selectedProjectId) {
+    if (projectId.toLowerCase() !== normalizedSelectedProjectId) {
       continue
     }
 
