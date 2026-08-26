@@ -127,7 +127,10 @@ function parseDateRangeQuery(req, options = {}) {
     throw new Error(orderMessage);
   }
 
-  return { startDate, endDate };
+  const endDateExclusive = new Date(endDate);
+  endDateExclusive.setUTCDate(endDateExclusive.getUTCDate() + 1);
+
+  return { startDate, endDate, endDateExclusive };
 }
 
 function isDateRangeQueryError(message) {
@@ -136,10 +139,10 @@ function isDateRangeQueryError(message) {
 
 async function handleResourceWorkloadReport(req, res) {
   try {
-    const { startDate, endDate } = parseDateRangeQuery(req);
+    const { startDate, endDate, endDateExclusive } = parseDateRangeQuery(req);
 
     const allocations = await Allocation.find({
-      start_date: { $lte: endDate },
+      start_date: { $lt: endDateExclusive },
       end_date: { $gte: startDate }
     })
       .populate({ path: 'project_id', select: 'name' })
@@ -158,7 +161,7 @@ async function handleResourceWorkloadReport(req, res) {
 
 async function handleResourcesWorkload(req, res) {
   try {
-    const { startDate, endDate } = parseDateRangeQuery(req, {
+    const { startDate, endDate, endDateExclusive } = parseDateRangeQuery(req, {
       startKey: 'start',
       endKey: 'end',
       missingMessage: 'start and end are required.',
@@ -168,7 +171,7 @@ async function handleResourcesWorkload(req, res) {
     const [resources, allocations] = await Promise.all([
       Resource.find().sort({ name: 1, created_at: 1 }),
       Allocation.find({
-        start_date: { $lte: endDate },
+        start_date: { $lt: endDateExclusive },
         end_date: { $gte: startDate }
       })
         .populate({ path: 'project_id', select: 'name' })
@@ -188,7 +191,7 @@ async function handleResourcesWorkload(req, res) {
 
 async function handleProjectWorkloadReport(req, res) {
   try {
-    const { startDate, endDate } = parseDateRangeQuery(req);
+    const { startDate, endDate, endDateExclusive } = parseDateRangeQuery(req);
     const { project_id: projectId } = req.query;
 
     if (!projectId) {
@@ -207,7 +210,7 @@ async function handleProjectWorkloadReport(req, res) {
 
     const allocations = await Allocation.find({
       project_id: projectId,
-      start_date: { $lte: endDate },
+      start_date: { $lt: endDateExclusive },
       end_date: { $gte: startDate }
     }).sort({ resource_id: 1, start_date: 1, end_date: 1, created_at: 1 });
 
