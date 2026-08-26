@@ -53,7 +53,7 @@ export function aggregateProjectDailyWorkload(
   for (const allocation of allocations) {
     const projectId = getProjectId(allocation)
 
-    if (projectId.toLowerCase() !== normalizedSelectedProjectId) {
+    if (!projectId || projectId.toLowerCase() !== normalizedSelectedProjectId) {
       continue
     }
 
