@@ -127,3 +127,25 @@ test('aggregated values are accurate for overlapping allocations by same resourc
   ])
   assert.equal(workload.total_planned_hours, 13.5)
 })
+
+
+test('matches ObjectId project ids regardless of hex casing', () => {
+  const projectId = 'ABCDEF1234567890ABCDEF12'
+  const workload = aggregateProjectDailyWorkload(
+    [
+      {
+        project_id: projectId.toLowerCase(),
+        resource_id: 'resource-a',
+        start_date: '2026-04-20',
+        end_date: '2026-04-20',
+        hours_per_day: 4
+      }
+    ],
+    projectId,
+    '2026-04-20',
+    '2026-04-20'
+  )
+
+  assert.equal(workload.resources.length, 1)
+  assert.equal(workload.total_planned_hours, 4)
+})
